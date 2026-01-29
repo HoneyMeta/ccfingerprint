@@ -4,6 +4,12 @@ AI 模型身份指纹识别工具 - 通过自问自答验证模型真实身份
 
 AI Model Identity Fingerprinting Tool - Verify model identity through self-Q&A
 
+---
+
+🌐 **[查看详细介绍 / View Details](https://www.honeymeta.com/#ccfingerprint)**
+
+---
+
 ## 安装 / Installation
 
 ```bash
