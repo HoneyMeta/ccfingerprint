@@ -19,15 +19,20 @@ npm install -g ccfingerprint
 ## Usage
 
 ```bash
+# First, navigate to your project directory
+cd /path/to/your/project
+
 # Chinese version (default)
 ccfp init --ai claude
 ccfp init --ai cursor
 ccfp init --ai windsurf
 ccfp init --ai copilot
+ccfp init --ai kiro
 
 # English version
 ccfp init --ai claude --lang en
 ccfp init --ai cursor --lang en
+ccfp init --ai kiro --lang en
 
 # Specify output directory
 ccfp init --ai claude --output /path/to/project
@@ -37,7 +42,7 @@ ccfp init --ai claude --output /path/to/project
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot) | claude |
+| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot, kiro) | claude |
 | `--lang <language>` | Language (zh, en) | zh |
 | `--output <path>` | Output directory | . |
 
@@ -49,6 +54,7 @@ ccfp init --ai claude --output /path/to/project
 | Cursor | `.cursor/rules/fingerprint.mdc` | Ask "identify what model you are" |
 | Windsurf | `.windsurfrules` | Ask "identify what model you are" |
 | GitHub Copilot | `.github/copilot-instructions.md` | Ask "identify what model you are" |
+| Kiro | `.kiro/rules/fingerprint.md` | Ask "identify what model you are" |
 
 ## How It Works
 

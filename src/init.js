@@ -25,13 +25,18 @@ const AI_CONFIGS = {
     template: { zh: 'copilot.md', en: 'copilot.en.md' },
     targetFile: '.github/copilot-instructions.md',
     description: { zh: 'GitHub Copilot 提示词', en: 'GitHub Copilot instructions' }
+  },
+  kiro: {
+    template: { zh: 'kiro.md', en: 'kiro.en.md' },
+    targetFile: '.kiro/rules/fingerprint.md',
+    description: { zh: 'Kiro 规则文件', en: 'Kiro rules file' }
   }
 };
 
 const MESSAGES = {
   zh: {
     unsupportedAI: (ai) => `错误: 不支持的 AI 类型 "${ai}"`,
-    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot',
+    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot, kiro',
     templateNotFound: (path) => `错误: 模板文件不存在 "${path}"`,
     createdDir: (dir) => `创建目录: ${dir}`,
     installed: (desc) => `✓ 已安装 ${desc}`,
@@ -42,7 +47,7 @@ const MESSAGES = {
   },
   en: {
     unsupportedAI: (ai) => `Error: Unsupported AI type "${ai}"`,
-    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot',
+    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot, kiro',
     templateNotFound: (path) => `Error: Template file not found "${path}"`,
     createdDir: (dir) => `Created directory: ${dir}`,
     installed: (desc) => `✓ Installed ${desc}`,

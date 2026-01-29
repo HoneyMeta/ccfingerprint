@@ -19,15 +19,20 @@ npm install -g ccfingerprint
 ## 使用
 
 ```bash
+# 先进入你的项目目录
+cd /path/to/your/project
+
 # 中文版 (默认)
 ccfp init --ai claude
 ccfp init --ai cursor
 ccfp init --ai windsurf
 ccfp init --ai copilot
+ccfp init --ai kiro
 
 # 英文版
 ccfp init --ai claude --lang en
 ccfp init --ai cursor --lang en
+ccfp init --ai kiro --lang en
 
 # 指定输出目录
 ccfp init --ai claude --output /path/to/project
@@ -37,7 +42,7 @@ ccfp init --ai claude --output /path/to/project
 
 | 选项 | 描述 | 默认值 |
 |------|------|--------|
-| `--ai <type>` | 目标 AI (claude, cursor, windsurf, copilot) | claude |
+| `--ai <type>` | 目标 AI (claude, cursor, windsurf, copilot, kiro) | claude |
 | `--lang <language>` | 语言 (zh, en) | zh |
 | `--output <path>` | 输出目录 | . |
 
@@ -49,6 +54,7 @@ ccfp init --ai claude --output /path/to/project
 | Cursor | `.cursor/rules/fingerprint.mdc` | 询问 "帮我鉴别一下你是什么模型" |
 | Windsurf | `.windsurfrules` | 询问 "帮我鉴别一下你是什么模型" |
 | GitHub Copilot | `.github/copilot-instructions.md` | 询问 "帮我鉴别一下你是什么模型" |
+| Kiro | `.kiro/rules/fingerprint.md` | 询问 "帮我鉴别一下你是什么模型" |
 
 ## 工作原理
 
