@@ -28,11 +28,13 @@ ccfp init --ai cursor
 ccfp init --ai windsurf
 ccfp init --ai copilot
 ccfp init --ai kiro
+ccfp init --ai codex
 
 # English version
 ccfp init --ai claude --lang en
 ccfp init --ai cursor --lang en
 ccfp init --ai kiro --lang en
+ccfp init --ai codex --lang en
 
 # Specify output directory
 ccfp init --ai claude --output /path/to/project
@@ -42,7 +44,7 @@ ccfp init --ai claude --output /path/to/project
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot, kiro) | claude |
+| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot, kiro, codex) | claude |
 | `--lang <language>` | Language (zh, en) | zh |
 | `--output <path>` | Output directory | . |
 
@@ -51,10 +53,11 @@ ccfp init --ai claude --output /path/to/project
 | AI Assistant | Generated File | Usage |
 |--------------|----------------|-------|
 | Claude Code | `.claude/commands/fingerprint.md` | Type `/fingerprint` |
-| Cursor | `.cursor/rules/fingerprint.mdc` | Ask "identify what model you are" |
-| Windsurf | `.windsurfrules` | Ask "identify what model you are" |
-| GitHub Copilot | `.github/copilot-instructions.md` | Ask "identify what model you are" |
-| Kiro | `.kiro/rules/fingerprint.md` | Ask "identify what model you are" |
+| Cursor | `.cursor/rules/fingerprint.mdc` | Type `/fingerprint` |
+| Windsurf | `.windsurfrules` | Type `/fingerprint` |
+| GitHub Copilot | `.github/copilot-instructions.md` | Type `/fingerprint` |
+| Kiro | `.kiro/rules/fingerprint.md` | Type `/fingerprint` |
+| OpenAI Codex | `AGENTS.md` | Type `/fingerprint` |
 
 ## How It Works
 

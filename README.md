@@ -28,11 +28,13 @@ ccfp init --ai cursor
 ccfp init --ai windsurf
 ccfp init --ai copilot
 ccfp init --ai kiro
+ccfp init --ai codex
 
 # 英文版
 ccfp init --ai claude --lang en
 ccfp init --ai cursor --lang en
 ccfp init --ai kiro --lang en
+ccfp init --ai codex --lang en
 
 # 指定输出目录
 ccfp init --ai claude --output /path/to/project
@@ -42,7 +44,7 @@ ccfp init --ai claude --output /path/to/project
 
 | 选项 | 描述 | 默认值 |
 |------|------|--------|
-| `--ai <type>` | 目标 AI (claude, cursor, windsurf, copilot, kiro) | claude |
+| `--ai <type>` | 目标 AI (claude, cursor, windsurf, copilot, kiro, codex) | claude |
 | `--lang <language>` | 语言 (zh, en) | zh |
 | `--output <path>` | 输出目录 | . |
 
@@ -51,10 +53,11 @@ ccfp init --ai claude --output /path/to/project
 | AI 助手 | 生成文件 | 使用方式 |
 |---------|----------|----------|
 | Claude Code | `.claude/commands/fingerprint.md` | 输入 `/fingerprint` |
-| Cursor | `.cursor/rules/fingerprint.mdc` | 询问 "帮我鉴别一下你是什么模型" |
-| Windsurf | `.windsurfrules` | 询问 "帮我鉴别一下你是什么模型" |
-| GitHub Copilot | `.github/copilot-instructions.md` | 询问 "帮我鉴别一下你是什么模型" |
-| Kiro | `.kiro/rules/fingerprint.md` | 询问 "帮我鉴别一下你是什么模型" |
+| Cursor | `.cursor/rules/fingerprint.mdc` | 输入 `/fingerprint` |
+| Windsurf | `.windsurfrules` | 输入 `/fingerprint` |
+| GitHub Copilot | `.github/copilot-instructions.md` | 输入 `/fingerprint` |
+| Kiro | `.kiro/rules/fingerprint.md` | 输入 `/fingerprint` |
+| OpenAI Codex | `AGENTS.md` | 输入 `/fingerprint` |
 
 ## 工作原理
 

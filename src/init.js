@@ -30,31 +30,34 @@ const AI_CONFIGS = {
     template: { zh: 'kiro.md', en: 'kiro.en.md' },
     targetFile: '.kiro/rules/fingerprint.md',
     description: { zh: 'Kiro 规则文件', en: 'Kiro rules file' }
+  },
+  codex: {
+    template: { zh: 'codex.md', en: 'codex.en.md' },
+    targetFile: 'AGENTS.md',
+    description: { zh: 'OpenAI Codex 代理文件', en: 'OpenAI Codex agent file' }
   }
 };
 
 const MESSAGES = {
   zh: {
     unsupportedAI: (ai) => `错误: 不支持的 AI 类型 "${ai}"`,
-    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot, kiro',
+    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot, kiro, codex',
     templateNotFound: (path) => `错误: 模板文件不存在 "${path}"`,
     createdDir: (dir) => `创建目录: ${dir}`,
     installed: (desc) => `✓ 已安装 ${desc}`,
     location: (path) => `  位置: ${path}`,
     usage: '使用方式:',
-    claudeUsage: '  在 Claude Code 中输入: /fingerprint',
-    otherUsage: (ai) => `  在 ${ai} 中询问: "帮我鉴别一下你是什么模型"`
+    fingerprintUsage: '  输入: /fingerprint'
   },
   en: {
     unsupportedAI: (ai) => `Error: Unsupported AI type "${ai}"`,
-    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot, kiro',
+    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot, kiro, codex',
     templateNotFound: (path) => `Error: Template file not found "${path}"`,
     createdDir: (dir) => `Created directory: ${dir}`,
     installed: (desc) => `✓ Installed ${desc}`,
     location: (path) => `  Location: ${path}`,
     usage: 'Usage:',
-    claudeUsage: '  In Claude Code, type: /fingerprint',
-    otherUsage: (ai) => `  In ${ai}, ask: "identify what model you are"`
+    fingerprintUsage: '  Type: /fingerprint'
   }
 };
 
@@ -94,9 +97,5 @@ export async function init(options) {
 
   // 显示使用说明
   console.log('\n' + messages.usage);
-  if (ai === 'claude') {
-    console.log(messages.claudeUsage);
-  } else {
-    console.log(messages.otherUsage(ai));
-  }
+  console.log(messages.fingerprintUsage);
 }
