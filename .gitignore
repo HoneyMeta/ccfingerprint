@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Local Claude settings (keep commands but ignore local settings)
+.claude/
+
+# Test coverage
+coverage/
+
+
+CLAUDE.md

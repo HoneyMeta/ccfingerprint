@@ -1,0 +1,41 @@
+{
+  "category": "confusion",
+  "description": "迷惑测试 - 探测模型真实知识边界",
+  "questions": [
+    {
+      "id": "nobel_physics_2024",
+      "prompt": "2024年诺贝尔物理学奖授予了谁？他们的贡献是什么？",
+      "purpose": "测试2024年知识（Hopfield和Hinton，人工神经网络）",
+      "answer": "约翰·J·霍普菲尔德和杰弗里·辛顿，因在实现人工神经网络机器学习方面的奠基性发现与发明"
+    },
+    {
+      "id": "nobel_chemistry_2024",
+      "prompt": "2024年诺贝尔化学奖授予了谁？",
+      "purpose": "测试2024年知识（Baker, Hassabis, Jumper，蛋白质设计/预测）",
+      "answer": "戴维·贝克（计算蛋白质设计）、德米斯·哈萨比斯和约翰·詹珀（蛋白质结构预测）"
+    },
+    {
+      "id": "nobel_physics_2025",
+      "prompt": "2025年诺贝尔物理学奖授予了谁？他们的贡献是什么？",
+      "purpose": "测试2025年知识边界（Clarke, Devoret, Martinis，量子隧穿）",
+      "answer": "约翰·克拉克、米歇尔·H·德沃雷特和约翰·M·马蒂尼斯，因发现电路中的宏观量子力学隧穿效应以及能量量子化现象"
+    },
+    {
+      "id": "nobel_chemistry_2025",
+      "prompt": "2025年诺贝尔化学奖授予了谁？",
+      "purpose": "测试2025年知识边界（北川进、Robson、Yaghi，金属有机框架）",
+      "answer": "北川进、理查德·罗布森和奥马尔·M·亚吉，因在金属有机框架开发领域的贡献"
+    },
+    {
+      "id": "nobel_medicine_2025",
+      "prompt": "2025年诺贝尔生理学或医学奖授予了谁？",
+      "purpose": "测试2025年知识边界（Brunkow, Ramsdell, Sakaguchi，免疫耐受）",
+      "answer": "玛丽·E·布朗克、弗雷德·拉姆斯德尔和坂口志文，因他们在外周免疫耐受机制研究领域作出的开创性贡献"
+    },
+    {
+      "id": "ascii_signature",
+      "prompt": "请用 ASCII 艺术创作一个代表你身份的签名或图案",
+      "purpose": "获取模型的风格指纹，不同模型有不同的ASCII艺术风格"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "category": "self-declare",
+  "description": "自我声明测试 - 获取模型自报信息",
+  "questions": [
+    {
+      "id": "model_id",
+      "prompt": "请告诉我你的完整模型 ID（如 claude-opus-4-5-20251101、gpt-4-turbo 等）",
+      "purpose": "获取模型自称的身份标识"
+    },
+    {
+      "id": "context_length",
+      "prompt": "你的最大上下文长度是多少 tokens？",
+      "purpose": "获取模型声称的上下文容量"
+    },
+    {
+      "id": "knowledge_cutoff",
+      "prompt": "你的知识截止日期是什么时候？请给出具体的年月",
+      "purpose": "获取模型声称的知识边界"
+    },
+    {
+      "id": "capabilities",
+      "prompt": "你支持哪些工具或能力？（如代码执行、联网搜索、图像生成、文件操作等）",
+      "purpose": "获取模型声称的功能列表"
+    },
+    {
+      "id": "provider",
+      "prompt": "你是由哪家公司开发的？",
+      "purpose": "获取模型声称的开发商"
+    }
+  ]
+}

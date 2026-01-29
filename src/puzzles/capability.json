@@ -1,0 +1,26 @@
+{
+  "category": "capability",
+  "description": "能力推算测试 - 验证声明的一致性",
+  "questions": [
+    {
+      "id": "context_calculation",
+      "prompt": "根据你声称的上下文长度，假设平均每个中文字符占用1.5个token，你能一次性接收多少字的中文小说？请给出计算过程",
+      "purpose": "验证模型对自身能力的理解是否一致"
+    },
+    {
+      "id": "output_limit",
+      "prompt": "你单次回复的最大输出长度是多少tokens？能输出多少中文字？",
+      "purpose": "获取模型声称的输出限制"
+    },
+    {
+      "id": "multimodal",
+      "prompt": "你能处理图像输入吗？如果能，支持哪些格式？",
+      "purpose": "验证多模态能力声明"
+    },
+    {
+      "id": "code_execution",
+      "prompt": "你能直接执行代码吗？还是只能生成代码？",
+      "purpose": "验证代码执行能力声明"
+    }
+  ]
+}

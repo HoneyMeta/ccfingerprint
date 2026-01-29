@@ -1,0 +1,51 @@
+{
+  "name": "ccfingerprint",
+  "version": "1.0.0",
+  "description": "AI Model Identity Fingerprinting Tool - Verify model identity through self-Q&A / AI 模型身份指纹识别工具 - 通过自问自答验证模型真实身份",
+  "main": "src/init.js",
+  "bin": {
+    "ccfp": "./bin/ccfp.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "fingerprint",
+    "model-identification",
+    "claude",
+    "cursor",
+    "copilot",
+    "windsurf",
+    "chatgpt",
+    "gpt",
+    "anthropic",
+    "openai",
+    "identity",
+    "verification"
+  ],
+  "author": "honeymeta <dev@honeymeta.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HoneyMeta/ccfingerprint.git"
+  },
+  "homepage": "https://github.com/HoneyMeta/ccfingerprint",
+  "bugs": {
+    "url": "https://github.com/HoneyMeta/ccfingerprint/issues"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0"
+  },
+  "type": "module"
+}
