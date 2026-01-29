@@ -36,8 +36,8 @@ ccfp init --ai cursor --lang en
 ccfp init --ai kiro --lang en
 ccfp init --ai codex --lang en
 
-# 指定输出目录
-ccfp init --ai claude --output /path/to/project
+# 开始鉴别
+# 在 AI 助手中输入: /fingerprint
 ```
 
 ## 选项

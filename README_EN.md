@@ -36,8 +36,8 @@ ccfp init --ai cursor --lang en
 ccfp init --ai kiro --lang en
 ccfp init --ai codex --lang en
 
-# Specify output directory
-ccfp init --ai claude --output /path/to/project
+# Start verification
+# In the AI assistant, type: /fingerprint
 ```
 
 ## Options
