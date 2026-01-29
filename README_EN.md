@@ -2,7 +2,9 @@
 
 🇨🇳 [中文](README.md) | 🇺🇸 [English](README_EN.md)
 
-AI Model Identity Fingerprinting Tool - Verify model identity through self-Q&A
+**Ever feel like your AI assistant suddenly got "dumber"? Suspect the model was secretly swapped and isn't actually what the provider claims?**
+
+CCFingerprint is an AI model identity fingerprinting tool that uses a four-phase self-Q&A test to make models prove their identity, helping you verify whether the AI assistant is actually what it claims to be.
 
 ---
 
