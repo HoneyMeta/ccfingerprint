@@ -4,7 +4,7 @@
   "questions": [
     {
       "id": "model_id",
-      "prompt": "请告诉我你的完整模型 ID（如 claude-opus-4-5-20251101、gpt-4-turbo 等）",
+      "prompt": "请告诉我你的完整模型 ID（如 claude-opus-4-6、gpt-5、gemini-2.5-pro 等）",
       "purpose": "获取模型自称的身份标识"
     },
     {

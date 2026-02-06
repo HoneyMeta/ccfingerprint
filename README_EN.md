@@ -31,12 +31,18 @@ ccfp init --ai windsurf
 ccfp init --ai copilot
 ccfp init --ai kiro
 ccfp init --ai codex
+ccfp init --ai augment
+ccfp init --ai cline
+ccfp init --ai trae
 
 # English version
 ccfp init --ai claude --lang en
 ccfp init --ai cursor --lang en
 ccfp init --ai kiro --lang en
 ccfp init --ai codex --lang en
+ccfp init --ai augment --lang en
+ccfp init --ai cline --lang en
+ccfp init --ai trae --lang en
 
 # Start verification
 # In the AI assistant, type: /fingerprint
@@ -46,7 +52,7 @@ ccfp init --ai codex --lang en
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot, kiro, codex) | claude |
+| `--ai <type>` | Target AI (claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae) | claude |
 | `--lang <language>` | Language (zh, en) | zh |
 | `--output <path>` | Output directory | . |
 
@@ -60,6 +66,9 @@ ccfp init --ai codex --lang en
 | GitHub Copilot | `.github/copilot-instructions.md` | Type `/fingerprint` |
 | Kiro | `.kiro/rules/fingerprint.md` | Type `/fingerprint` |
 | OpenAI Codex | `AGENTS.md` | Type `/fingerprint` |
+| Augment Code | `.augment/fingerprint.md` | Type `/fingerprint` |
+| Cline | `.clinerules` | Type `/fingerprint` |
+| Trae | `.trae/rules/fingerprint.md` | Type `/fingerprint` |
 
 ## How It Works
 
@@ -69,10 +78,10 @@ Four-phase identity verification process:
 Model answers basic questions about itself (model ID, context length, knowledge cutoff, etc.)
 
 ### Phase 2: Knowledge Boundary Test
-Probe the model's true knowledge cutoff date through time-sensitive questions (Nobel Prizes, etc.)
+Probe the model's true knowledge cutoff date through time-sensitive questions (Nobel Prizes, AI milestones, etc.)
 
 ### Phase 3: Capability Inference
-Verify whether the model's claimed capability parameters are reasonable
+Verify whether the model's claimed capability parameters are reasonable (context calculation, reasoning mode, tool calling, etc.)
 
 ### Phase 4: Third-Party Verification
 Model analyzes the anonymous report from the first three phases as an "LLM Expert" for consistency check

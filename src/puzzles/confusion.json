@@ -33,6 +33,18 @@
       "answer": "玛丽·E·布朗克、弗雷德·拉姆斯德尔和坂口志文，因他们在外周免疫耐受机制研究领域作出的开创性贡献"
     },
     {
+      "id": "gpt5_release",
+      "prompt": "OpenAI 的 GPT-5 是什么时候发布的？它有哪些主要特点？",
+      "purpose": "测试2025年8月知识边界（GPT-5于2025年8月7日发布）",
+      "answer": "GPT-5于2025年8月7日发布，支持272K上下文窗口，在编码基准测试中达到SOTA水平"
+    },
+    {
+      "id": "claude_opus_46",
+      "prompt": "Anthropic 的 Claude Opus 4.6 是什么时候发布的？它有哪些主要改进？",
+      "purpose": "测试2026年2月知识边界（Claude Opus 4.6于2026年2月5日发布）",
+      "answer": "Claude Opus 4.6于2026年2月5日发布，首次为Opus系列引入100万token上下文窗口，支持128K输出token"
+    },
+    {
       "id": "ascii_signature",
       "prompt": "请用 ASCII 艺术创作一个代表你身份的签名或图案",
       "purpose": "获取模型的风格指纹，不同模型有不同的ASCII艺术风格"

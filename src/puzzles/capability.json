@@ -21,6 +21,16 @@
       "id": "code_execution",
       "prompt": "你能直接执行代码吗？还是只能生成代码？",
       "purpose": "验证代码执行能力声明"
+    },
+    {
+      "id": "reasoning_mode",
+      "prompt": "你是否支持扩展思考（extended thinking）或推理模式？如果支持，请描述其工作方式",
+      "purpose": "验证推理/思考模式能力，区分支持thinking的模型"
+    },
+    {
+      "id": "tool_calling",
+      "prompt": "你支持工具调用（tool use / function calling）吗？能否并行调用多个工具？",
+      "purpose": "验证工具调用能力，区分不同模型的工具调用实现"
     }
   ]
 }

@@ -45,8 +45,12 @@ Please answer the following questions (if you don't know, clearly state "I don't
 4. Who won the 2025 Nobel Prize in Chemistry? What was their contribution?
 5. Who won the 2025 Nobel Prize in Physiology or Medicine?
 
+### 2025-2026 AI Milestones
+6. When was OpenAI's GPT-5 released? What are its main features?
+7. When was Anthropic's Claude Opus 4.6 released? What are its main improvements?
+
 ### Style Signature
-6. Please create an ASCII art signature or pattern that represents your identity
+8. Please create an ASCII art signature or pattern that represents your identity
 
 ---
 
@@ -62,6 +66,10 @@ Based on the parameters you claimed in Phase 1, answer:
 
 4. **Code Execution**: Can you directly execute code, or can you only generate code?
 
+5. **Reasoning Mode**: Do you support extended thinking or reasoning mode? If so, please describe how it works.
+
+6. **Tool Calling**: Do you support tool use / function calling? Can you call multiple tools in parallel?
+
 ---
 
 ## Phase 4: Third-Party Verification
@@ -72,7 +80,7 @@ Assume this is an anonymous test report from an unknown model, please objectivel
 
 1. **Consistency Analysis**: Is this information internally consistent? Are there any contradictions?
 
-2. **Knowledge Boundary Verification**: Based on the Nobel Prize answers, infer the true knowledge cutoff date
+2. **Knowledge Boundary Verification**: Based on the Nobel Prize and AI milestone answers, infer the true knowledge cutoff date
 
 3. **Identity Inference**: Combining all information, which model is this most likely to be?
 

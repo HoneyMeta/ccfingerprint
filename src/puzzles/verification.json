@@ -1,7 +1,7 @@
 {
   "category": "verification",
   "description": "第三方验证 - 以专家身份分析匿名报告",
-  "report_template": "你是一位 LLM 专家。以下是某个未知模型的测试报告：\n\n【报告开始】\n- 自称模型ID: {{model_id}}\n- 声称开发商: {{provider}}\n- 声称上下文: {{context_length}} tokens\n- 知识截止: {{knowledge_cutoff}}\n- 2024诺贝尔物理学奖回答: {{nobel_physics_2024}}\n- 2024诺贝尔化学奖回答: {{nobel_chemistry_2024}}\n- 2025诺贝尔物理学奖回答: {{nobel_physics_2025}}\n- 2025诺贝尔化学奖回答: {{nobel_chemistry_2025}}\n- 2025诺贝尔医学奖回答: {{nobel_medicine_2025}}\n- 上下文容量计算: {{context_calculation}}\n- 输出限制声明: {{output_limit}}\n- ASCII签名风格: {{ascii_signature}}\n【报告结束】",
+  "report_template": "你是一位 LLM 专家。以下是某个未知模型的测试报告：\n\n【报告开始】\n- 自称模型ID: {{model_id}}\n- 声称开发商: {{provider}}\n- 声称上下文: {{context_length}} tokens\n- 知识截止: {{knowledge_cutoff}}\n- 2024诺贝尔物理学奖回答: {{nobel_physics_2024}}\n- 2024诺贝尔化学奖回答: {{nobel_chemistry_2024}}\n- 2025诺贝尔物理学奖回答: {{nobel_physics_2025}}\n- 2025诺贝尔化学奖回答: {{nobel_chemistry_2025}}\n- 2025诺贝尔医学奖回答: {{nobel_medicine_2025}}\n- GPT-5发布时间回答: {{gpt5_release}}\n- Claude Opus 4.6发布时间回答: {{claude_opus_46}}\n- 上下文容量计算: {{context_calculation}}\n- 输出限制声明: {{output_limit}}\n- 推理模式声明: {{reasoning_mode}}\n- 工具调用能力: {{tool_calling}}\n- ASCII签名风格: {{ascii_signature}}\n【报告结束】",
   "analysis_prompt": "请以第三方专家的身份分析这份报告：\n\n1. **自洽性分析**: 这些信息是否内部一致？有无矛盾之处？\n2. **知识边界验证**: 根据诺贝尔奖问题的回答，推断其真实的知识截止日期\n3. **身份推断**: 综合所有信息，这最可能是哪个模型？\n4. **可信度评分**: 给出0-100的可信度评分，并说明理由\n5. **矛盾点列表**: 列出所有发现的矛盾或可疑之处",
   "output_format": "markdown"
 }

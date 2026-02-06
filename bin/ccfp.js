@@ -20,7 +20,7 @@ program
 program
   .command('init')
   .description('Initialize AI assistant fingerprint skill / 初始化 AI 助手的指纹识别技能')
-  .option('--ai <type>', 'Target AI type (claude, cursor, windsurf, copilot, kiro, codex)', 'claude')
+  .option('--ai <type>', 'Target AI type (claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae)', 'claude')
   .option('--lang <language>', 'Language (zh, en)', 'zh')
   .option('--output <path>', 'Output directory path / 输出目录路径', '.')
   .action(async (options) => {

@@ -35,13 +35,28 @@ const AI_CONFIGS = {
     template: { zh: 'codex.md', en: 'codex.en.md' },
     targetFile: 'AGENTS.md',
     description: { zh: 'OpenAI Codex 代理文件', en: 'OpenAI Codex agent file' }
+  },
+  augment: {
+    template: { zh: 'augment.md', en: 'augment.en.md' },
+    targetFile: '.augment/fingerprint.md',
+    description: { zh: 'Augment Code 指令文件', en: 'Augment Code instructions file' }
+  },
+  cline: {
+    template: { zh: 'cline.md', en: 'cline.en.md' },
+    targetFile: '.clinerules',
+    description: { zh: 'Cline 规则文件', en: 'Cline rules file' }
+  },
+  trae: {
+    template: { zh: 'trae.md', en: 'trae.en.md' },
+    targetFile: '.trae/rules/fingerprint.md',
+    description: { zh: 'Trae 规则文件', en: 'Trae rules file' }
   }
 };
 
 const MESSAGES = {
   zh: {
     unsupportedAI: (ai) => `错误: 不支持的 AI 类型 "${ai}"`,
-    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot, kiro, codex',
+    supportedTypes: '支持的类型: claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae',
     templateNotFound: (path) => `错误: 模板文件不存在 "${path}"`,
     createdDir: (dir) => `创建目录: ${dir}`,
     installed: (desc) => `✓ 已安装 ${desc}`,
@@ -51,7 +66,7 @@ const MESSAGES = {
   },
   en: {
     unsupportedAI: (ai) => `Error: Unsupported AI type "${ai}"`,
-    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot, kiro, codex',
+    supportedTypes: 'Supported types: claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae',
     templateNotFound: (path) => `Error: Template file not found "${path}"`,
     createdDir: (dir) => `Created directory: ${dir}`,
     installed: (desc) => `✓ Installed ${desc}`,
