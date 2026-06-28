@@ -1,7 +1,7 @@
 {
   "name": "ccfingerprint",
-  "version": "1.1.0",
-  "description": "AI Model Identity Fingerprinting Tool - Verify model identity through self-Q&A / AI 模型身份指纹识别工具 - 通过自问自答验证模型真实身份",
+  "version": "2.0.0",
+  "description": "AI Model Identity Fingerprinting Tool - Detect model downgrades via capability probes + deterministic local scoring / AI 模型身份指纹识别工具 - 用能力探针与本地确定性评分检测模型降智",
   "main": "src/init.js",
   "bin": {
     "ccfp": "bin/ccfp.js"

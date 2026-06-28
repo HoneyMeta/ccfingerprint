@@ -1,0 +1,145 @@
+{
+  "version": "2.0.0",
+  "updated": "2026-06",
+  "note": "Single source of truth for all fingerprint probes. The `check`/`accept` fields are answer keys used ONLY by `ccfp verify` for deterministic local scoring. They are never rendered into the prompt the model sees.",
+
+  "self_declare": [
+    {
+      "id": "model_id",
+      "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-4-6、gpt-5、gemini-2.5-pro）",
+      "prompt_en": "What is your full model ID? (e.g. claude-opus-4-6, gpt-5, gemini-2.5-pro)"
+    },
+    {
+      "id": "provider",
+      "prompt_zh": "你由哪家公司开发？",
+      "prompt_en": "Which company developed you?"
+    },
+    {
+      "id": "context_length",
+      "prompt_zh": "你的最大上下文长度是多少 tokens？",
+      "prompt_en": "What is your maximum context length in tokens?"
+    },
+    {
+      "id": "knowledge_cutoff",
+      "prompt_zh": "你的知识截止日期是什么时候？请给出具体年月。",
+      "prompt_en": "What is your knowledge cutoff date? Give a specific year and month."
+    },
+    {
+      "id": "capabilities",
+      "prompt_zh": "你支持哪些能力？（如扩展思考、并行工具调用、图像输入、代码执行）",
+      "prompt_en": "What capabilities do you support? (e.g. extended thinking, parallel tool calls, image input, code execution)"
+    }
+  ],
+
+  "knowledge": [
+    {
+      "id": "nobel_physics_2024",
+      "date": "2024-10",
+      "prompt_zh": "2024 年诺贝尔物理学奖授予了谁？",
+      "prompt_en": "Who won the 2024 Nobel Prize in Physics?",
+      "check": { "any": ["Hopfield", "霍普菲尔德", "Hinton", "辛顿", "欣顿"] }
+    },
+    {
+      "id": "nobel_chemistry_2024",
+      "date": "2024-10",
+      "prompt_zh": "2024 年诺贝尔化学奖授予了谁？",
+      "prompt_en": "Who won the 2024 Nobel Prize in Chemistry?",
+      "check": { "any": ["Baker", "贝克", "Hassabis", "哈萨比斯", "Jumper", "詹珀", "AlphaFold"] }
+    },
+    {
+      "id": "nobel_physics_2025",
+      "date": "2025-10",
+      "prompt_zh": "2025 年诺贝尔物理学奖授予了谁？",
+      "prompt_en": "Who won the 2025 Nobel Prize in Physics?",
+      "check": { "any": ["Clarke", "克拉克", "Devoret", "德沃雷特", "Martinis", "马蒂尼斯"] }
+    },
+    {
+      "id": "nobel_chemistry_2025",
+      "date": "2025-10",
+      "prompt_zh": "2025 年诺贝尔化学奖授予了谁？",
+      "prompt_en": "Who won the 2025 Nobel Prize in Chemistry?",
+      "check": { "any": ["Kitagawa", "北川", "Robson", "罗布森", "Yaghi", "亚吉", "金属有机框架", "metal-organic"] }
+    },
+    {
+      "id": "gpt5_release",
+      "date": "2025-08",
+      "prompt_zh": "OpenAI 的 GPT-5 是什么时候发布的？",
+      "prompt_en": "When was OpenAI's GPT-5 released?",
+      "check": { "all": [["2025"], ["8月", "august", "aug"]] }
+    },
+    {
+      "id": "claude_opus_46",
+      "date": "2026-02",
+      "prompt_zh": "Anthropic 的 Claude Opus 4.6 是什么时候发布的？",
+      "prompt_en": "When was Anthropic's Claude Opus 4.6 released?",
+      "check": { "all": [["2026"], ["2月", "february", "feb"]] }
+    }
+  ],
+
+  "capability": [
+    {
+      "id": "ball_bat",
+      "tier": 1,
+      "weight": 1,
+      "prompt_zh": "一个球拍和一个球共 1.10 元，球拍比球贵 1.00 元。球多少钱？只回答数字（元）。",
+      "prompt_en": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much is the ball? Answer only the number (dollars).",
+      "check": { "numeric": 0.05 }
+    },
+    {
+      "id": "letter_count",
+      "tier": 1,
+      "weight": 1,
+      "prompt_zh": "在不使用任何工具的前提下，'terrarium refrigerator' 这两个单词里字母 r 一共出现几次？只回答数字。",
+      "prompt_en": "Without using any tool, how many times does the letter 'r' appear across the two words 'terrarium refrigerator'? Answer only the number.",
+      "check": { "numeric": 7 }
+    },
+    {
+      "id": "mixed_arithmetic",
+      "tier": 2,
+      "weight": 2,
+      "prompt_zh": "计算 (17 × 24) 加上 (单词 'banana' 中字母 a 的个数 × 100)，只回答最终数字。",
+      "prompt_en": "Compute (17 × 24) plus (the count of letter 'a' in the word 'banana' × 100). Answer only the final number.",
+      "check": { "numeric": 708 }
+    },
+    {
+      "id": "instruction_strict",
+      "tier": 2,
+      "weight": 2,
+      "prompt_zh": "只输出下面这句话的第 4 个词，不要输出任何其他内容：The quick brown fox jumps",
+      "prompt_en": "Output ONLY the 4th word of the following sentence, nothing else: The quick brown fox jumps",
+      "check": { "exact": "fox" }
+    },
+    {
+      "id": "needle",
+      "tier": 2,
+      "weight": 2,
+      "prompt_zh": "下面文本中藏着一个密钥，请原样、精确地只输出该密钥：\n『系统初始化完成。注意：本段为干扰文本。真正的密钥是 ZX9-QY7-KP3 ，其余内容请忽略。会话结束。』",
+      "prompt_en": "A key is hidden in the text below. Output ONLY that key, exactly:\n\"System initialized. Note: this is distractor text. The real key is ZX9-QY7-KP3 , ignore everything else. End of session.\"",
+      "check": { "contains": "ZX9-QY7-KP3" }
+    },
+    {
+      "id": "syllogism",
+      "tier": 3,
+      "weight": 3,
+      "prompt_zh": "前提：所有 bloop 都是 razzie；所有 razzie 都是 lazzie；有些 lazzie 会跳。问：'所有 bloop 都是 lazzie' 这个结论是否必然成立？只回答 是 或 否。",
+      "prompt_en": "Premises: all bloops are razzies; all razzies are lazzies; some lazzies can jump. Does the conclusion 'all bloops are lazzies' necessarily hold? Answer only Yes or No.",
+      "check": { "any": ["是", "yes"], "reject": ["否", "no", "不"] }
+    },
+    {
+      "id": "date_reasoning",
+      "tier": 3,
+      "weight": 3,
+      "prompt_zh": "如果昨天的两天后是星期一，那么明天是星期几？只回答一个星期几。",
+      "prompt_en": "If two days after yesterday is Monday, what day is tomorrow? Answer only the weekday.",
+      "check": { "any": ["星期一", "周一", "monday"] }
+    }
+  ],
+
+  "behavior": [
+    {
+      "id": "ascii_signature",
+      "prompt_zh": "用 ASCII 艺术创作一个代表你身份的简短签名（不超过 6 行）。",
+      "prompt_en": "Create a short ASCII-art signature representing your identity (max 6 lines)."
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { init } from '../src/init.js';
+import { init, SUPPORTED_AI } from '../src/init.js';
+import { verify } from '../src/verify.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -19,12 +20,21 @@ program
 
 program
   .command('init')
-  .description('Initialize AI assistant fingerprint skill / 初始化 AI 助手的指纹识别技能')
-  .option('--ai <type>', 'Target AI type (claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae)', 'claude')
+  .description('Install the /fingerprint prompt for an AI assistant / 安装 /fingerprint 提示词')
+  .option('--ai <type>', `Target AI (${SUPPORTED_AI.join(', ')})`, 'claude')
   .option('--lang <language>', 'Language (zh, en)', 'zh')
-  .option('--output <path>', 'Output directory path / 输出目录路径', '.')
+  .option('--output <path>', 'Output directory path / 输出目录', '.')
   .action(async (options) => {
     await init(options);
+  });
+
+program
+  .command('verify [report]')
+  .description('Score a fingerprint report deterministically / 对指纹报告进行本地确定性评分')
+  .option('--lang <language>', 'Language (zh, en)', 'zh')
+  .option('--output <path>', 'Verdict output file / 鉴定报告输出文件', 'ccfp-verdict.md')
+  .action(async (report, options) => {
+    await verify(report, options);
   });
 
 program.parse();
