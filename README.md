@@ -27,21 +27,23 @@ v1 的思路是"问模型你是谁"，但这在今天有几个硬伤：能偷换
 npm install -g ccfingerprint
 ```
 
-## 使用（两步）
+## 使用（一步）
+
+主流的 **Claude Code** 和 **Codex** 能自己执行终端命令，所以整个流程就一条 `/fingerprint`：
 
 ```bash
-# 1. 在你的项目目录安装 /fingerprint 提示词
+# 在你的项目目录安装 /fingerprint 提示词（只需一次）
 cd /path/to/your/project
-ccfp init --ai claude          # 或 cursor / windsurf / copilot / kiro / codex / augment / cline / trae
-
-# 2. 在 AI 助手里运行
-#    /fingerprint
-#    模型答完题后会在项目根目录生成 ccfp-report.json
-
-# 3. 回到终端，进行本地确定性评分
-ccfp verify ccfp-report.json
-#    输出鉴定结论，并保存为 ccfp-verdict.md
+ccfp init --ai claude     # 或 ccfp init --ai codex
 ```
+
+然后在 AI 助手里输入 **`/fingerprint`** 即可。模型会自动：
+1. 凭内置知识作答全部探针；
+2. 生成 `ccfp-report.json`；
+3. **自己运行 `ccfp verify ccfp-report.json`**；
+4. 把确定性鉴定结论直接展示给你。
+
+> 对于不能自动执行终端命令的助手（如 Copilot），模型会生成 `ccfp-report.json` 并提示你手动运行 `ccfp verify ccfp-report.json`。
 
 英文版加 `--lang en`，例如 `ccfp init --ai claude --lang en`。
 
@@ -62,23 +64,25 @@ ccfp verify ccfp-report.json
 
 ## 支持的 AI 助手
 
-| AI 助手 | 生成文件 | 使用方式 |
+| AI 助手 | 生成文件 | 一步完成? |
 |---------|----------|----------|
-| Claude Code | `.claude/commands/fingerprint.md` | 输入 `/fingerprint` |
-| Cursor | `.cursor/rules/fingerprint.mdc` | 输入 `/fingerprint` |
-| Windsurf | `.windsurfrules` | 输入 `/fingerprint` |
-| GitHub Copilot | `.github/copilot-instructions.md` | 输入 `/fingerprint` |
-| Kiro | `.kiro/rules/fingerprint.md` | 输入 `/fingerprint` |
-| OpenAI Codex | `AGENTS.md` | 输入 `/fingerprint` |
-| Augment Code | `.augment/fingerprint.md` | 输入 `/fingerprint` |
-| Cline | `.clinerules` | 输入 `/fingerprint` |
-| Trae | `.trae/rules/fingerprint.md` | 输入 `/fingerprint` |
+| **Claude Code** | `.claude/commands/fingerprint.md` | ✅ 自动答题+评分 |
+| **OpenAI Codex** | `AGENTS.md` | ✅ 自动答题+评分 |
+| Cursor | `.cursor/rules/fingerprint.mdc` | ✅ 自动答题+评分 |
+| Cline | `.clinerules` | ✅ 自动答题+评分 |
+| Windsurf | `.windsurfrules` | ✅ 自动答题+评分 |
+| Trae | `.trae/rules/fingerprint.md` | ✅ 自动答题+评分 |
+| Augment Code | `.augment/fingerprint.md` | ✅ 自动答题+评分 |
+| Kiro | `.kiro/rules/fingerprint.md` | ✅ 自动答题+评分 |
+| GitHub Copilot | `.github/copilot-instructions.md` | ⚠️ 生成报告后需手动 `ccfp verify` |
+
+> 凡是能执行终端命令的助手，都会在 `/fingerprint` 里自动跑完 `ccfp verify`；不能执行命令的助手退化为"生成报告 + 提示你手动评分"。
 
 ## 工作原理
 
 ```
-ccfp init  →  /fingerprint  →  ccfp-report.json  →  ccfp verify  →  ccfp-verdict.md
- 安装提示词     模型作答         机读作答报告          本地确定性评分      鉴定报告
+ccfp init  →  /fingerprint  ┌─ 模型作答 → ccfp-report.json → 模型自己跑 ccfp verify ─┐ →  鉴定结论
+ 安装提示词    (一条命令)     └──────────── 全部在一次 /fingerprint 内完成 ───────────┘    + ccfp-verdict.md
 ```
 
 模型作答四类探针（提示词里**只有题目、没有答案**）：

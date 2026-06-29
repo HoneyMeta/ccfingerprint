@@ -27,21 +27,23 @@ v1 asked the model "who are you?", which fails today: a provider that can swap t
 npm install -g ccfingerprint
 ```
 
-## Usage (two steps)
+## Usage (one step)
+
+The mainstream **Claude Code** and **Codex** can run terminal commands themselves, so the whole flow is a single `/fingerprint`:
 
 ```bash
-# 1. Install the /fingerprint prompt in your project
+# Install the /fingerprint prompt once
 cd /path/to/your/project
-ccfp init --ai claude --lang en   # or cursor / windsurf / copilot / kiro / codex / augment / cline / trae
-
-# 2. In your AI assistant, run
-#    /fingerprint
-#    The model answers and writes ccfp-report.json in the project root
-
-# 3. Back in the terminal, score it deterministically
-ccfp verify ccfp-report.json --lang en
-#    Prints the verdict and saves ccfp-verdict.md
+ccfp init --ai claude --lang en    # or: ccfp init --ai codex --lang en
 ```
+
+Then just type **`/fingerprint`** in your AI assistant. The model will automatically:
+1. answer every probe from its built-in knowledge;
+2. write `ccfp-report.json`;
+3. **run `ccfp verify ccfp-report.json` itself**;
+4. show you the deterministic verdict.
+
+> For assistants that can't run terminal commands (e.g. Copilot), the model writes `ccfp-report.json` and asks you to run `ccfp verify ccfp-report.json` manually.
 
 ## Commands
 
@@ -60,23 +62,25 @@ ccfp verify ccfp-report.json --lang en
 
 ## Supported AI Assistants
 
-| AI Assistant | Generated File | How to use |
-|--------------|----------------|------------|
-| Claude Code | `.claude/commands/fingerprint.md` | Type `/fingerprint` |
-| Cursor | `.cursor/rules/fingerprint.mdc` | Type `/fingerprint` |
-| Windsurf | `.windsurfrules` | Type `/fingerprint` |
-| GitHub Copilot | `.github/copilot-instructions.md` | Type `/fingerprint` |
-| Kiro | `.kiro/rules/fingerprint.md` | Type `/fingerprint` |
-| OpenAI Codex | `AGENTS.md` | Type `/fingerprint` |
-| Augment Code | `.augment/fingerprint.md` | Type `/fingerprint` |
-| Cline | `.clinerules` | Type `/fingerprint` |
-| Trae | `.trae/rules/fingerprint.md` | Type `/fingerprint` |
+| AI Assistant | Generated File | One step? |
+|--------------|----------------|-----------|
+| **Claude Code** | `.claude/commands/fingerprint.md` | ✅ answers + scores itself |
+| **OpenAI Codex** | `AGENTS.md` | ✅ answers + scores itself |
+| Cursor | `.cursor/rules/fingerprint.mdc` | ✅ answers + scores itself |
+| Cline | `.clinerules` | ✅ answers + scores itself |
+| Windsurf | `.windsurfrules` | ✅ answers + scores itself |
+| Trae | `.trae/rules/fingerprint.md` | ✅ answers + scores itself |
+| Augment Code | `.augment/fingerprint.md` | ✅ answers + scores itself |
+| Kiro | `.kiro/rules/fingerprint.md` | ✅ answers + scores itself |
+| GitHub Copilot | `.github/copilot-instructions.md` | ⚠️ writes report, run `ccfp verify` manually |
+
+> Any assistant that can run terminal commands completes `ccfp verify` automatically inside `/fingerprint`; ones that can't fall back to "write report + ask you to score".
 
 ## How it works
 
 ```
-ccfp init  →  /fingerprint  →  ccfp-report.json  →  ccfp verify  →  ccfp-verdict.md
-install prompt   model answers   machine-readable      local scoring     verdict report
+ccfp init  →  /fingerprint  ┌─ model answers → ccfp-report.json → model runs ccfp verify ─┐ →  verdict
+install prompt  (one command) └──────────────── all inside a single /fingerprint ──────────┘   + ccfp-verdict.md
 ```
 
 The model answers four kinds of probes (the prompt contains **only the questions, never the answers**):
