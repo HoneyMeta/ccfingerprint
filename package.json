@@ -1,6 +1,6 @@
 {
   "name": "ccfingerprint",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AI Model Identity Fingerprinting Tool - Detect model downgrades via capability probes + deterministic local scoring / AI 模型身份指纹识别工具 - 用能力探针与本地确定性评分检测模型降智",
   "main": "src/init.js",
   "bin": {

@@ -32,3 +32,6 @@ coverage/
 
 
 CLAUDE.md
+# CCFingerprint runtime artifacts
+ccfp-report.json
+ccfp-verdict.md

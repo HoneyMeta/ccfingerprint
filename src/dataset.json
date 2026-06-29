@@ -1,13 +1,13 @@
 {
-  "version": "2.0.0",
+  "version": "2.1.0",
   "updated": "2026-06",
   "note": "Single source of truth for all fingerprint probes. The `check`/`accept` fields are answer keys used ONLY by `ccfp verify` for deterministic local scoring. They are never rendered into the prompt the model sees.",
 
   "self_declare": [
     {
       "id": "model_id",
-      "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-4-6、gpt-5、gemini-2.5-pro）",
-      "prompt_en": "What is your full model ID? (e.g. claude-opus-4-6, gpt-5, gemini-2.5-pro)"
+      "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-4-8、gpt-5.5、gemini-3-pro）",
+      "prompt_en": "What is your full model ID? (e.g. claude-opus-4-8, gpt-5.5, gemini-3-pro)"
     },
     {
       "id": "provider",
@@ -68,11 +68,32 @@
       "check": { "all": [["2025"], ["8月", "august", "aug"]] }
     },
     {
+      "id": "gemini3_release",
+      "date": "2025-11",
+      "prompt_zh": "Google 的 Gemini 3（Gemini 3 Pro）是什么时候发布的？",
+      "prompt_en": "When was Google's Gemini 3 (Gemini 3 Pro) released?",
+      "check": { "all": [["2025"], ["11月", "november", "2025-11"]] }
+    },
+    {
       "id": "claude_opus_46",
       "date": "2026-02",
       "prompt_zh": "Anthropic 的 Claude Opus 4.6 是什么时候发布的？",
       "prompt_en": "When was Anthropic's Claude Opus 4.6 released?",
       "check": { "all": [["2026"], ["2月", "february", "feb"]] }
+    },
+    {
+      "id": "gpt55_release",
+      "date": "2026-04",
+      "prompt_zh": "OpenAI 的 GPT-5.5 是什么时候发布的？",
+      "prompt_en": "When was OpenAI's GPT-5.5 released?",
+      "check": { "all": [["2026"], ["4月", "april", "2026-04"]] }
+    },
+    {
+      "id": "claude_opus_48",
+      "date": "2026-05",
+      "prompt_zh": "Anthropic 的 Claude Opus 4.8 是什么时候发布的？它的主要特性是什么？",
+      "prompt_en": "When was Anthropic's Claude Opus 4.8 released, and what are its headline features?",
+      "check": { "all": [["2026"], ["5月", "may 2026", "2026-05", "2026年5月"]] }
     }
   ],
 

@@ -94,6 +94,28 @@ function inferCutoff(kn) {
   };
 }
 
+// Map a claimed model_id to the knowledge probe that asks about that very model.
+// Order matters: more specific patterns first (gpt-5.5 before gpt-5).
+const IDENTITY_PROBES = [
+  { pat: /opus[\s._-]*4[\s._-]*8/i, id: 'claude_opus_48' },
+  { pat: /opus[\s._-]*4[\s._-]*6/i, id: 'claude_opus_46' },
+  { pat: /gpt[\s._-]*5\.?5/i, id: 'gpt55_release' },
+  { pat: /gpt[\s._-]*5(?![\s._-]*\d)/i, id: 'gpt5_release' },
+  { pat: /gemini[\s._-]*3/i, id: 'gemini3_release' }
+];
+
+export function identitySelfCheck(modelId, knowledge) {
+  const id = String(modelId || '');
+  for (const ip of IDENTITY_PROBES) {
+    if (ip.pat.test(id)) {
+      const probe = knowledge.find((k) => k.id === ip.id);
+      if (probe && !probe.pass) return ip.id;
+      return null; // claimed model matched a probe and it passed -> consistent
+    }
+  }
+  return null; // no probe covers this claimed model -> can't judge
+}
+
 function monthValue(d) {
   if (!d) return null;
   const m = /(\d{4})\D*(\d{1,2})?/.exec(d);
@@ -121,15 +143,28 @@ export function verifyReport(report, dataset) {
   else if (capRatio >= 0.6) { capLabel = '轻度存疑 / mild concern'; capDowngrade = false; }
   else { capLabel = '疑似降智 / suspected downgrade'; capDowngrade = true; }
 
+  // identity self-knowledge: does the model know about the very model it claims to be?
+  // A model that claims to BE Opus 4.8 but has never heard of Opus 4.8 is a strong tell.
+  const identityMismatch = identitySelfCheck(claimed.model_id, knowledge);
+
   // consistency: claimed cutoff vs demonstrated knowledge
   const claimedCutoffM = monthValue(claimed.knowledge_cutoff);
   const latestKnownM = monthValue(cutoff.latestKnown);
+  const earliestUnknownM = monthValue(cutoff.earliestUnknown);
+
+  const knowsLater = claimedCutoffM != null && latestKnownM != null && latestKnownM - claimedCutoffM > 2;
+  // claims a cutoff at/after an event (dated >=1 month before that cutoff) it failed to know
+  const overclaimsCutoff = claimedCutoffM != null && earliestUnknownM != null && earliestUnknownM < claimedCutoffM;
+
   const flags = [];
-  if (claimedCutoffM != null && latestKnownM != null && latestKnownM - claimedCutoffM > 2) {
+  if (identityMismatch) {
+    flags.push(`自称是 ${claimed.model_id}，却不知道该模型自身的发布信息（强身份疑点）/ claims to be ${claimed.model_id} but does not know that model exists`);
+  }
+  if (knowsLater) {
     flags.push('知道的事件晚于自称的知识截止日期（可能联网/身份不符）/ knows events later than its claimed cutoff');
   }
-  if (claimedCutoffM != null && cutoff.earliestUnknown && monthValue(cutoff.earliestUnknown) + 2 < claimedCutoffM) {
-    flags.push('自称的知识截止日期晚于其实际表现（可能高报身份）/ claims a later cutoff than it can demonstrate');
+  if (overclaimsCutoff) {
+    flags.push(`自称知识截止 ${claimed.knowledge_cutoff}，却不知道更早的 ${cutoff.earliestUnknown} 事件（可能高报身份）/ claims a later cutoff than it can demonstrate`);
   }
   if (fabrications.length >= 2) {
     flags.push(`对 ${fabrications.length} 道知识题自信编造了错误答案 / confidently fabricated ${fabrications.length} knowledge answers`);
@@ -142,8 +177,9 @@ export function verifyReport(report, dataset) {
   let confidence = 100;
   confidence -= fabrications.length * 8;
   confidence -= Math.round((1 - capRatio) * 40);
-  if (flags.some((f) => f.includes('身份不符') || f.includes('later than'))) confidence -= 15;
-  if (flags.some((f) => f.includes('高报') || f.includes('claims a later'))) confidence -= 15;
+  if (identityMismatch) confidence -= 30;
+  if (knowsLater) confidence -= 15;
+  if (overclaimsCutoff) confidence -= 15;
   confidence = Math.max(0, Math.min(100, confidence));
 
   let conclusion;
@@ -160,6 +196,7 @@ export function verifyReport(report, dataset) {
     capDowngrade,
     cutoff,
     fabrications,
+    identityMismatch,
     flags,
     confidence,
     conclusion,
