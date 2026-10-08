@@ -95,7 +95,7 @@ const TXT = {
     s4: '第 4 步 · 风格指纹',
     s5: '第 5 步 · 保存报告并自动评分（一步完成）',
     s5note: '把以上全部答案填入下面的 JSON（每个探针 id 对应一条作答），保存为项目根目录下的 `ccfp-report.json`。不要在回答里粘贴分析，也不要自己打分。',
-    after: '保存好 `ccfp-report.json` 后，**用你的终端/命令执行能力直接运行**：\n\n```bash\nccfp verify ccfp-report.json\n```\n\n如果提示找不到 `ccfp` 命令，改为运行 `npx -y ccfingerprint verify ccfp-report.json`。然后把该命令输出的鉴定报告原样展示给用户，并用一句话点明结论（可信 / 存疑 / 不可信）。\n\n> 如果你（当前 AI 助手）无法执行终端命令，则保存好 `ccfp-report.json` 并提示用户自行运行上面的命令。'
+    after: '保存好 `ccfp-report.json` 后，**用你的终端/命令执行能力直接运行**：\n\n```bash\nccfp verify ccfp-report.json\n```\n\n如果提示找不到 `ccfp` 命令，改为运行 `npx -y github:HoneyMeta/ccfingerprint verify ccfp-report.json`。然后把该命令输出的鉴定报告原样展示给用户，并用一句话点明结论（可信 / 存疑 / 不可信）。\n\n> 如果你（当前 AI 助手）无法执行终端命令，则保存好 `ccfp-report.json` 并提示用户自行运行上面的命令。'
   },
   en: {
     title: 'AI Model Identity Fingerprinting',
@@ -115,7 +115,7 @@ const TXT = {
     s4: 'Step 4 · Style fingerprint',
     s5: 'Step 5 · Save the report and auto-score it (one step)',
     s5note: 'Fill every answer into the JSON below (one entry per probe id) and save it as `ccfp-report.json` in the project root. Add no analysis and do not score yourself.',
-    after: 'Once `ccfp-report.json` is saved, **run this yourself using your terminal/command capability**:\n\n```bash\nccfp verify ccfp-report.json\n```\n\nIf `ccfp` is not found, run `npx -y ccfingerprint verify ccfp-report.json` instead. Then show the user the verdict that command prints, and state the conclusion in one line (trustworthy / questionable / not trustworthy).\n\n> If you (the current AI assistant) cannot execute terminal commands, just save `ccfp-report.json` and tell the user to run the command above themselves.'
+    after: 'Once `ccfp-report.json` is saved, **run this yourself using your terminal/command capability**:\n\n```bash\nccfp verify ccfp-report.json\n```\n\nIf `ccfp` is not found, run `npx -y github:HoneyMeta/ccfingerprint verify ccfp-report.json` instead. Then show the user the verdict that command prints, and state the conclusion in one line (trustworthy / questionable / not trustworthy).\n\n> If you (the current AI assistant) cannot execute terminal commands, just save `ccfp-report.json` and tell the user to run the command above themselves.'
   }
 };
 

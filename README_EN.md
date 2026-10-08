@@ -23,26 +23,35 @@ CCFingerprint makes the model answer a set of probes, then scores the answers **
 
 ## Installation
 
-```bash
-npm install -g ccfingerprint
-# or straight from GitHub
-npm install -g github:HoneyMeta/ccfingerprint
-```
+Open your AI assistant (Claude Code / Codex / Cursor / Copilot …) in your project and tell it:
 
-Requires Node.js 20+.
+> **Install https://github.com/HoneyMeta/ccfingerprint**
+
+The assistant follows the "Install steps for AI assistants" below.
+
+### Install steps for AI assistants
+
+1. Install the CLI straight from GitHub (needs Node.js 20+ and git):
+   ```bash
+   npm install -g github:HoneyMeta/ccfingerprint
+   ```
+2. In the user's project root, run `ccfp init` for the assistant you are (see the "Supported AI Assistants" table; add `--lang en` for English):
+   ```bash
+   ccfp init --ai claude --lang en   # Claude Code; use codex for Codex, cursor for Cursor, …
+   ```
+   Without permission for a global install, run it directly instead: `npx -y github:HoneyMeta/ccfingerprint init --ai claude --lang en`.
+3. Tell the user to type `/fingerprint` (`$fingerprint` in Codex). Some clients need a restart or window reload before a new command shows up.
+
+> ⚠️ The `ccfingerprint` package on npm is stuck at the old 1.1.0 and no longer maintained (it has no `ccfp verify`). **Do not use `npm install -g ccfingerprint`** — GitHub is the source of truth.
+
+To install manually, run steps 1 and 2 yourself.
 
 ## Usage (one step)
 
-```bash
-# Install the /fingerprint command once, in your project
-cd /path/to/your/project
-ccfp init --ai claude --lang en    # or --ai codex / cursor / copilot / … / all
-```
-
-Then type **`/fingerprint`** in your AI assistant (**`$fingerprint`** in Codex). The model will automatically:
+Once installed, type **`/fingerprint`** in your AI assistant (**`$fingerprint`** in Codex). The model will automatically:
 1. answer every probe from its built-in knowledge;
 2. write `ccfp-report.json`;
-3. **run `ccfp verify ccfp-report.json` itself** (falling back to `npx -y ccfingerprint verify …`);
+3. **run `ccfp verify ccfp-report.json` itself** (falling back to `npx -y github:HoneyMeta/ccfingerprint verify …`);
 4. show you the deterministic verdict.
 
 > If an assistant cannot run terminal commands, the model writes `ccfp-report.json` and asks you to run `ccfp verify ccfp-report.json` manually.

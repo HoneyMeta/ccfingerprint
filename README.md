@@ -23,31 +23,40 @@ CCFingerprint 是一个 AI 模型身份指纹识别工具。它让模型作答�
 
 ## 安装
 
-```bash
-npm install -g ccfingerprint
-# 或直接从 GitHub 安装
-npm install -g github:HoneyMeta/ccfingerprint
-```
+在你的项目里打开 AI 助手（Claude Code / Codex / Cursor / Copilot 等），直接对它说：
 
-需要 Node.js 20+。
+> **安装 https://github.com/HoneyMeta/ccfingerprint**
+
+AI 会按下面的「给 AI 的安装步骤」自动完成安装。
+
+### 给 AI 的安装步骤
+
+1. 从 GitHub 安装命令行工具（需要 Node.js 20+ 和 git）：
+   ```bash
+   npm install -g github:HoneyMeta/ccfingerprint
+   ```
+2. 在用户的项目根目录，按你自己是哪个助手运行 `ccfp init`（类型对照下方「支持的 AI 助手」表，英文用户加 `--lang en`）：
+   ```bash
+   ccfp init --ai claude      # Claude Code；Codex 用 codex，Cursor 用 cursor……
+   ```
+   没有全局安装权限时，可以免安装直接运行：`npx -y github:HoneyMeta/ccfingerprint init --ai claude`。
+3. 告诉用户输入 `/fingerprint`（Codex 为 `$fingerprint`）开始鉴定；部分客户端需要重启或重新加载窗口才能识别新命令。
+
+> ⚠️ npm 上的 `ccfingerprint` 包停留在旧版 1.1.0，已不再维护（没有 `ccfp verify`），**请不要用 `npm install -g ccfingerprint`**，以 GitHub 为准。
+
+手动安装就是上面第 1、2 步自己执行一遍。
 
 ## 使用（一步）
 
-```bash
-# 在你的项目目录安装 /fingerprint 命令（只需一次）
-cd /path/to/your/project
-ccfp init --ai claude     # 或 --ai codex / cursor / copilot / … / all
-```
-
-然后在 AI 助手里输入 **`/fingerprint`**（Codex 里是 **`$fingerprint`**）即可。模型会自动：
+安装完成后，在 AI 助手里输入 **`/fingerprint`**（Codex 里是 **`$fingerprint`**）即可。模型会自动：
 1. 凭内置知识作答全部探针；
 2. 生成 `ccfp-report.json`；
-3. **自己运行 `ccfp verify ccfp-report.json`**（找不到命令时改用 `npx -y ccfingerprint verify …`）；
+3. **自己运行 `ccfp verify ccfp-report.json`**（找不到命令时改用 `npx -y github:HoneyMeta/ccfingerprint verify …`）；
 4. 把确定性鉴定结论直接展示给你。
 
 > 不能执行终端命令的助手，会生成 `ccfp-report.json` 并提示你手动运行 `ccfp verify ccfp-report.json`。
 
-英文版加 `--lang en`，例如 `ccfp init --ai claude --lang en`。
+英文版加 `--lang en`，例如 `ccfp init --ai claude --lang en`；一次给所有助手安装用 `--ai all`。
 
 ## 命令
 
