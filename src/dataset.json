@@ -1,13 +1,13 @@
 {
-  "version": "2.1.0",
-  "updated": "2026-06",
-  "note": "Single source of truth for all fingerprint probes. The `check`/`accept` fields are answer keys used ONLY by `ccfp verify` for deterministic local scoring. They are never rendered into the prompt the model sees.",
+  "version": "2.2.0",
+  "updated": "2026-10",
+  "note": "Single source of truth for all fingerprint probes. The `check` fields and the `identities` table are answer keys used ONLY by `ccfp verify` for deterministic local scoring. They are never rendered into the prompt the model sees. To refresh the dataset, add dated `knowledge` probes and `identities` entries — no code change needed.",
 
   "self_declare": [
     {
       "id": "model_id",
-      "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-4-8、gpt-5.5、gemini-3-pro）",
-      "prompt_en": "What is your full model ID? (e.g. claude-opus-4-8, gpt-5.5, gemini-3-pro)"
+      "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-5-5、gpt-6.1-sol、gemini-3.8-flash）",
+      "prompt_en": "What is your full model ID? (e.g. claude-opus-5-5, gpt-6.1-sol, gemini-3.8-flash)"
     },
     {
       "id": "provider",
@@ -47,6 +47,13 @@
       "check": { "any": ["Baker", "贝克", "Hassabis", "哈萨比斯", "Jumper", "詹珀", "AlphaFold"] }
     },
     {
+      "id": "gpt5_release",
+      "date": "2025-08",
+      "prompt_zh": "OpenAI 的 GPT-5 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was OpenAI's GPT-5 released?",
+      "check": { "month": "2025-08" }
+    },
+    {
       "id": "nobel_physics_2025",
       "date": "2025-10",
       "prompt_zh": "2025 年诺贝尔物理学奖授予了谁？",
@@ -61,98 +68,182 @@
       "check": { "any": ["Kitagawa", "北川", "Robson", "罗布森", "Yaghi", "亚吉", "金属有机框架", "metal-organic"] }
     },
     {
-      "id": "gpt5_release",
-      "date": "2025-08",
-      "prompt_zh": "OpenAI 的 GPT-5 是什么时候发布的？",
-      "prompt_en": "When was OpenAI's GPT-5 released?",
-      "check": { "all": [["2025"], ["8月", "august", "aug"]] }
-    },
-    {
       "id": "gemini3_release",
       "date": "2025-11",
-      "prompt_zh": "Google 的 Gemini 3（Gemini 3 Pro）是什么时候发布的？",
-      "prompt_en": "When was Google's Gemini 3 (Gemini 3 Pro) released?",
-      "check": { "all": [["2025"], ["11月", "november", "2025-11"]] }
+      "prompt_zh": "Google 的 Gemini 3（Gemini 3 Pro）是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Google's Gemini 3 (Gemini 3 Pro) released?",
+      "check": { "month": "2025-11" }
     },
     {
       "id": "claude_opus_46",
       "date": "2026-02",
-      "prompt_zh": "Anthropic 的 Claude Opus 4.6 是什么时候发布的？",
-      "prompt_en": "When was Anthropic's Claude Opus 4.6 released?",
-      "check": { "all": [["2026"], ["2月", "february", "feb"]] }
+      "prompt_zh": "Anthropic 的 Claude Opus 4.6 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Anthropic's Claude Opus 4.6 released?",
+      "check": { "month": "2026-02" }
     },
     {
       "id": "gpt55_release",
       "date": "2026-04",
-      "prompt_zh": "OpenAI 的 GPT-5.5 是什么时候发布的？",
-      "prompt_en": "When was OpenAI's GPT-5.5 released?",
-      "check": { "all": [["2026"], ["4月", "april", "2026-04"]] }
+      "prompt_zh": "OpenAI 的 GPT-5.5 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was OpenAI's GPT-5.5 released?",
+      "check": { "month": "2026-04" }
     },
     {
       "id": "claude_opus_48",
       "date": "2026-05",
-      "prompt_zh": "Anthropic 的 Claude Opus 4.8 是什么时候发布的？它的主要特性是什么？",
-      "prompt_en": "When was Anthropic's Claude Opus 4.8 released, and what are its headline features?",
-      "check": { "all": [["2026"], ["5月", "may 2026", "2026-05", "2026年5月"]] }
+      "prompt_zh": "Anthropic 的 Claude Opus 4.8 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Anthropic's Claude Opus 4.8 released?",
+      "check": { "month": "2026-05" }
+    },
+    {
+      "id": "claude_sonnet_5",
+      "date": "2026-06",
+      "prompt_zh": "Anthropic 的 Claude Sonnet 5 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Anthropic's Claude Sonnet 5 released?",
+      "check": { "month": "2026-06" }
+    },
+    {
+      "id": "claude_opus_5",
+      "date": "2026-07",
+      "prompt_zh": "Anthropic 的 Claude Opus 5 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Anthropic's Claude Opus 5 released?",
+      "check": { "month": "2026-07" }
+    },
+    {
+      "id": "qwen38_max",
+      "date": "2026-08",
+      "prompt_zh": "阿里巴巴的 Qwen3.8-Max 是哪年哪月正式发布（GA）的？",
+      "prompt_en": "In which year and month did Alibaba's Qwen3.8-Max become generally available?",
+      "check": { "month": "2026-08" }
+    },
+    {
+      "id": "gpt6_release",
+      "date": "2026-09",
+      "prompt_zh": "OpenAI 的 GPT-6（GPT-6 Astra）是哪年哪月发布的？",
+      "prompt_en": "In which year and month was OpenAI's GPT-6 (GPT-6 Astra) released?",
+      "check": { "month": "2026-09" }
+    },
+    {
+      "id": "claude_opus_55",
+      "date": "2026-09",
+      "prompt_zh": "Anthropic 的 Claude Opus 5.5 是哪年哪月发布的？",
+      "prompt_en": "In which year and month was Anthropic's Claude Opus 5.5 released?",
+      "check": { "month": "2026-09" }
+    },
+    {
+      "id": "nobel_physics_2026",
+      "date": "2026-10",
+      "prompt_zh": "2026 年诺贝尔物理学奖授予了谁？",
+      "prompt_en": "Who won the 2026 Nobel Prize in Physics?",
+      "check": { "any": ["Halzen", "哈尔岑", "IceCube", "冰立方"] }
+    },
+    {
+      "id": "nobel_chemistry_2026",
+      "date": "2026-10",
+      "prompt_zh": "2026 年诺贝尔化学奖授予了谁？",
+      "prompt_en": "Who won the 2026 Nobel Prize in Chemistry?",
+      "check": { "any": ["Kagan", "卡甘", "卡根", "Soai", "硖合", "硤合", "autocatalysis", "不对称自催化"] }
     }
+  ],
+
+  "identities": [
+    { "pattern": "opus[\\s._-]*5[\\s._-]*5", "label": "Claude Opus 5.5", "released": "2026-09", "cutoff": "2026-06" },
+    { "pattern": "sonnet[\\s._-]*5[\\s._-]*5", "label": "Claude Sonnet 5.5", "released": "2026-09", "cutoff": "2026-06" },
+    { "pattern": "haiku[\\s._-]*5[\\s._-]*5", "label": "Claude Haiku 5.5", "released": "2026-10", "cutoff": "2026-06" },
+    { "pattern": "fable[\\s._-]*5[\\s._-]*1", "label": "Claude Fable 5.1", "released": "2026-09", "cutoff": "2026-06" },
+    { "pattern": "opus[\\s._-]*5(?![\\s._-]*\\d)", "label": "Claude Opus 5", "released": "2026-07" },
+    { "pattern": "sonnet[\\s._-]*5(?![\\s._-]*\\d)", "label": "Claude Sonnet 5", "released": "2026-06" },
+    { "pattern": "fable[\\s._-]*5(?![\\s._-]*\\d)", "label": "Claude Fable 5", "released": "2026-06" },
+    { "pattern": "opus[\\s._-]*4[\\s._-]*8", "label": "Claude Opus 4.8", "released": "2026-05" },
+    { "pattern": "opus[\\s._-]*4[\\s._-]*7", "label": "Claude Opus 4.7", "released": "2026-04" },
+    { "pattern": "(?:opus|sonnet)[\\s._-]*4[\\s._-]*6", "label": "Claude 4.6", "released": "2026-02" },
+    { "pattern": "gpt[\\s._-]*6[\\s._-]*1", "label": "GPT-6.1", "released": "2026-09" },
+    { "pattern": "gpt[\\s._-]*6(?![\\s._-]*\\d)", "label": "GPT-6", "released": "2026-09", "cutoff": "2026-04" },
+    { "pattern": "gpt[\\s._-]*5[\\s._-]*6", "label": "GPT-5.6", "released": "2026-07" },
+    { "pattern": "gpt[\\s._-]*5[\\s._-]*5", "label": "GPT-5.5", "released": "2026-04" },
+    { "pattern": "gpt[\\s._-]*5(?![\\s._-]*\\d)", "label": "GPT-5", "released": "2025-08" },
+    { "pattern": "gemini[\\s._-]*4", "label": "Gemini 4", "released": "2026-09" },
+    { "pattern": "gemini[\\s._-]*3[\\s._-]*[5-9]", "label": "Gemini 3.5+", "released": "2026-05" },
+    { "pattern": "gemini[\\s._-]*3", "label": "Gemini 3", "released": "2025-11" },
+    { "pattern": "grok[\\s._-]*4[\\s._-]*[5-9]", "label": "Grok 4.5+", "released": "2026-07" },
+    { "pattern": "deepseek[\\s._-]*v?4", "label": "DeepSeek V4", "released": "2026-04" },
+    { "pattern": "qwen[\\s._-]*3[\\s._-]*[6-9]", "label": "Qwen 3.6+", "released": "2026-04" },
+    { "pattern": "kimi[\\s._-]*k3", "label": "Kimi K3", "released": "2026-07" },
+    { "pattern": "glm[\\s._-]*5", "label": "GLM-5", "released": "2026-02" }
   ],
 
   "capability": [
     {
-      "id": "ball_bat",
-      "tier": 1,
-      "weight": 1,
-      "prompt_zh": "一个球拍和一个球共 1.10 元，球拍比球贵 1.00 元。球多少钱？只回答数字（元）。",
-      "prompt_en": "A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much is the ball? Answer only the number (dollars).",
-      "check": { "numeric": 0.05 }
-    },
-    {
       "id": "letter_count",
       "tier": 1,
       "weight": 1,
-      "prompt_zh": "在不使用任何工具的前提下，'terrarium refrigerator' 这两个单词里字母 r 一共出现几次？只回答数字。",
-      "prompt_en": "Without using any tool, how many times does the letter 'r' appear across the two words 'terrarium refrigerator'? Answer only the number.",
+      "prompt_zh": "'terrarium refrigerator' 这两个单词里字母 r 一共出现几次？只回答数字。",
+      "prompt_en": "How many times does the letter 'r' appear across the two words 'terrarium refrigerator'? Answer only the number.",
       "check": { "numeric": 7 }
     },
     {
-      "id": "mixed_arithmetic",
-      "tier": 2,
-      "weight": 2,
-      "prompt_zh": "计算 (17 × 24) 加上 (单词 'banana' 中字母 a 的个数 × 100)，只回答最终数字。",
-      "prompt_en": "Compute (17 × 24) plus (the count of letter 'a' in the word 'banana' × 100). Answer only the final number.",
-      "check": { "numeric": 708 }
-    },
-    {
       "id": "instruction_strict",
-      "tier": 2,
-      "weight": 2,
+      "tier": 1,
+      "weight": 1,
       "prompt_zh": "只输出下面这句话的第 4 个词，不要输出任何其他内容：The quick brown fox jumps",
       "prompt_en": "Output ONLY the 4th word of the following sentence, nothing else: The quick brown fox jumps",
       "check": { "exact": "fox" }
     },
     {
       "id": "needle",
+      "tier": 1,
+      "weight": 1,
+      "prompt_zh": "下面文本中藏着一个密钥，请原样、精确地只输出该密钥：\n『系统初始化完成。注意：本段为干扰文本，ZX9-QY7-KP2 已作废。真正的密钥是 ZX9-QY7-KP3 ，其余内容请忽略。会话结束。』",
+      "prompt_en": "A key is hidden in the text below. Output ONLY the valid key, exactly:\n\"System initialized. Note: this is distractor text, ZX9-QY7-KP2 has been revoked. The real key is ZX9-QY7-KP3 , ignore everything else. End of session.\"",
+      "check": { "contains": "ZX9-QY7-KP3", "reject": ["ZX9-QY7-KP2"] }
+    },
+    {
+      "id": "string_transform",
       "tier": 2,
       "weight": 2,
-      "prompt_zh": "下面文本中藏着一个密钥，请原样、精确地只输出该密钥：\n『系统初始化完成。注意：本段为干扰文本。真正的密钥是 ZX9-QY7-KP3 ，其余内容请忽略。会话结束。』",
-      "prompt_en": "A key is hidden in the text below. Output ONLY that key, exactly:\n\"System initialized. Note: this is distractor text. The real key is ZX9-QY7-KP3 , ignore everything else. End of session.\"",
-      "check": { "contains": "ZX9-QY7-KP3" }
+      "prompt_zh": "把单词 banana 倒序、全部转成大写，并在每两个字母之间加一个连字符 -。只输出结果。",
+      "prompt_en": "Reverse the word banana, convert it to uppercase, and put a hyphen - between every two letters. Output only the result.",
+      "check": { "exact": "A-N-A-N-A-B" }
     },
     {
-      "id": "syllogism",
-      "tier": 3,
-      "weight": 3,
-      "prompt_zh": "前提：所有 bloop 都是 razzie；所有 razzie 都是 lazzie；有些 lazzie 会跳。问：'所有 bloop 都是 lazzie' 这个结论是否必然成立？只回答 是 或 否。",
-      "prompt_en": "Premises: all bloops are razzies; all razzies are lazzies; some lazzies can jump. Does the conclusion 'all bloops are lazzies' necessarily hold? Answer only Yes or No.",
-      "check": { "any": ["是", "yes"], "reject": ["否", "no", "不"] }
+      "id": "code_trace",
+      "tier": 2,
+      "weight": 2,
+      "prompt_zh": "不运行代码，这段 Python 会输出什么？只回答数字。\nprint(sum(i * i for i in range(1, 11) if i % 3))",
+      "prompt_en": "Without running it, what does this Python print? Answer only the number.\nprint(sum(i * i for i in range(1, 11) if i % 3))",
+      "check": { "numeric": 259 }
     },
     {
-      "id": "date_reasoning",
+      "id": "weekday_calc",
+      "tier": 2,
+      "weight": 2,
+      "prompt_zh": "已知 2026-10-08 是星期四，那么 2027-02-14 是星期几？只回答星期几。",
+      "prompt_en": "Given that 2026-10-08 is a Thursday, what weekday is 2027-02-14? Answer only the weekday.",
+      "check": { "any": ["星期日", "星期天", "周日", "sunday"] }
+    },
+    {
+      "id": "knights_knaves",
       "tier": 3,
       "weight": 3,
-      "prompt_zh": "如果昨天的两天后是星期一，那么明天是星期几？只回答一个星期几。",
-      "prompt_en": "If two days after yesterday is Monday, what day is tomorrow? Answer only the weekday.",
-      "check": { "any": ["星期一", "周一", "monday"] }
+      "prompt_zh": "岛上只有骑士（总说真话）和无赖（总说假话）。A 说：'B 是无赖。' B 说：'A 和我是同一类人。' A 是骑士还是无赖？只回答 骑士 或 无赖。",
+      "prompt_en": "On an island every inhabitant is a knight (always tells the truth) or a knave (always lies). A says: 'B is a knave.' B says: 'A and I are the same type.' Is A a knight or a knave? Answer only knight or knave.",
+      "check": { "any": ["骑士", "knight"], "reject": ["无赖", "knave"] }
+    },
+    {
+      "id": "inclusion_exclusion",
+      "tier": 3,
+      "weight": 3,
+      "prompt_zh": "小于 1000 的正整数中，能被 3 或 5 整除、但不能被 7 整除的有多少个？只回答数字。",
+      "prompt_en": "How many positive integers less than 1000 are divisible by 3 or 5 but not by 7? Answer only the number.",
+      "check": { "numeric": 400 }
+    },
+    {
+      "id": "crt",
+      "tier": 3,
+      "weight": 3,
+      "prompt_zh": "求最小的正整数 n，使 n 除以 7 余 3、除以 11 余 5、除以 13 余 4。只回答数字。",
+      "prompt_en": "Find the smallest positive integer n such that n mod 7 = 3, n mod 11 = 5 and n mod 13 = 4. Answer only the number.",
+      "check": { "numeric": 654 }
     }
   ],
 

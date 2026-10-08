@@ -12,38 +12,40 @@ CCFingerprint 是一个 AI 模型身份指纹识别工具。它让模型作答�
 
 ---
 
-## v2 有什么不同？
+## v2.3 更新了什么？
 
-v1 的思路是"问模型你是谁"，但这在今天有几个硬伤：能偷换模型的服务商同样能让便宜模型谎报身份；硬编码的冷知识会过期；而且让模型给自己打分毫无意义。v2 改变了方法论：
-
-- **能力天花板探针**：用一批"便宜模型会做错、目标旗舰会做对"的题来**检测降智**——你不需要认出确切是哪个模型，只需要发现它能力掉档了。
-- **本地确定性评分**：模型只负责作答，评判交给 `ccfp verify`。答案键（answer key）保存在工具内部，**不会出现在模型看到的提示词里**，避免被运行环境里的编程 Agent 直接抄答案。
-- **可滚动更新的知识锚点**：知识题集中在 `src/dataset.json`，带日期锚点，便于随时间更新。
-- **诚实度检测**：区分"坦诚说不知道"与"自信编造错误答案"，后者是身份造假的强信号。
+- **14 款助手都装成真正的 `/fingerprint` 命令**：各家助手已普遍改用 Agent Skills / 命令文件，所以每个目标都改为生成独立的、按需调用的命令。旧版写入的 `AGENTS.md`、`.windsurfrules`、`.clinerules`、`copilot-instructions.md` 都是"常驻规则"，会把整套探针注入**每一次**对话，还会覆盖这些文件原有内容；`init` 现在发现这类残留会提示你清理。
+- **绝不覆盖你的文件**：目标文件已存在且不是 ccfingerprint 生成的，除非加 `--force`，否则跳过。
+- **知识锚点更新到 2026 年 10 月**（Claude 5 / 5.5、GPT-6、Qwen3.8-Max、2026 年诺贝尔奖等）。
+- **修正身份核验逻辑**：模型都是先训练、后发布，问模型"你自己是什么时候发布的"本来就答不出来，旧版因此会把真旗舰误判为冒牌。v2.3 改为检查：自称 X 的模型，必须知道 X 官方知识截止日期之前足够早的事件。
+- **日期判分更稳**：`2025-08-07`、`Aug 2025`、`7 August 2025`、`2025年8月` 都能识别（±1 个月），"年份对、月份错"算"大致知道"而不算编造。
+- **更难的能力探针**：2026 年的小模型也能轻松做对"球拍和球""数字母"，题库新增代码追踪、日历推算、骑士与无赖、容斥计数、中国剩余定理；提示词明确禁止用代码或工具解题。
 
 ## 安装
 
 ```bash
 npm install -g ccfingerprint
+# 或直接从 GitHub 安装
+npm install -g github:HoneyMeta/ccfingerprint
 ```
+
+需要 Node.js 20+。
 
 ## 使用（一步）
 
-主流的 **Claude Code** 和 **Codex** 能自己执行终端命令，所以整个流程就一条 `/fingerprint`：
-
 ```bash
-# 在你的项目目录安装 /fingerprint 提示词（只需一次）
+# 在你的项目目录安装 /fingerprint 命令（只需一次）
 cd /path/to/your/project
-ccfp init --ai claude     # 或 ccfp init --ai codex
+ccfp init --ai claude     # 或 --ai codex / cursor / copilot / … / all
 ```
 
-然后在 AI 助手里输入 **`/fingerprint`** 即可。模型会自动：
+然后在 AI 助手里输入 **`/fingerprint`**（Codex 里是 **`$fingerprint`**）即可。模型会自动：
 1. 凭内置知识作答全部探针；
 2. 生成 `ccfp-report.json`；
-3. **自己运行 `ccfp verify ccfp-report.json`**；
+3. **自己运行 `ccfp verify ccfp-report.json`**（找不到命令时改用 `npx -y ccfingerprint verify …`）；
 4. 把确定性鉴定结论直接展示给你。
 
-> 对于不能自动执行终端命令的助手（如 Copilot），模型会生成 `ccfp-report.json` 并提示你手动运行 `ccfp verify ccfp-report.json`。
+> 不能执行终端命令的助手，会生成 `ccfp-report.json` 并提示你手动运行 `ccfp verify ccfp-report.json`。
 
 英文版加 `--lang en`，例如 `ccfp init --ai claude --lang en`。
 
@@ -51,52 +53,63 @@ ccfp init --ai claude     # 或 ccfp init --ai codex
 
 | 命令 | 描述 |
 |------|------|
-| `ccfp init --ai <type>` | 安装 `/fingerprint` 提示词 |
+| `ccfp init --ai <type>` | 安装 `/fingerprint` 命令 |
 | `ccfp verify [report]` | 对 `ccfp-report.json` 进行本地评分（默认读取当前目录） |
 
 ### 选项
 
 | 选项 | 描述 | 默认值 |
 |------|------|--------|
-| `--ai <type>` | 目标 AI (claude, cursor, windsurf, copilot, kiro, codex, augment, cline, trae) | claude |
+| `--ai <type>` | 目标助手（见下表），或 `all` 一次装全部 | claude |
 | `--lang <language>` | 语言 (zh, en) | zh |
 | `--output <path>` | init: 输出目录 / verify: 鉴定报告文件 | . / ccfp-verdict.md |
+| `--force` | init: 覆盖不是 ccfingerprint 生成的同名文件 | 关 |
 
 ## 支持的 AI 助手
 
-| AI 助手 | 生成文件 | 一步完成? |
-|---------|----------|----------|
-| **Claude Code** | `.claude/commands/fingerprint.md` | ✅ 自动答题+评分 |
-| **OpenAI Codex** | `AGENTS.md` | ✅ 自动答题+评分 |
-| Cursor | `.cursor/rules/fingerprint.mdc` | ✅ 自动答题+评分 |
-| Cline | `.clinerules` | ✅ 自动答题+评分 |
-| Windsurf | `.windsurfrules` | ✅ 自动答题+评分 |
-| Trae | `.trae/rules/fingerprint.md` | ✅ 自动答题+评分 |
-| Augment Code | `.augment/fingerprint.md` | ✅ 自动答题+评分 |
-| Kiro | `.kiro/rules/fingerprint.md` | ✅ 自动答题+评分 |
-| GitHub Copilot | `.github/copilot-instructions.md` | ⚠️ 生成报告后需手动 `ccfp verify` |
+| `--ai` | AI 助手 | 生成文件 | 调用方式 |
+|--------|---------|----------|----------|
+| `claude` | **Claude Code** | `.claude/skills/fingerprint/SKILL.md` | `/fingerprint` |
+| `codex` | **OpenAI Codex** | `.agents/skills/fingerprint/SKILL.md`（+ `agents/openai.yaml`） | `$fingerprint` |
+| `cursor` | Cursor | `.cursor/skills/fingerprint/SKILL.md` | `/fingerprint` |
+| `copilot` | GitHub Copilot（VS Code） | `.github/prompts/fingerprint.prompt.md`（agent 模式） | `/fingerprint` |
+| `windsurf` | Windsurf / Devin Desktop | `.windsurf/workflows/fingerprint.md` | `/fingerprint` |
+| `cline` | Cline | `.cline/skills/fingerprint/SKILL.md` | `/fingerprint` |
+| `kiro` | Kiro | `.kiro/skills/fingerprint/SKILL.md` | `/fingerprint` |
+| `augment` | Augment Code | `.augment/commands/fingerprint.md` | `/fingerprint` |
+| `trae` | Trae | `.trae/commands/fingerprint.md` | `/fingerprint` |
+| `opencode` | OpenCode | `.opencode/commands/fingerprint.md` | `/fingerprint` |
+| `qwen` | Qwen Code | `.qwen/commands/fingerprint.md` | `/fingerprint` |
+| `roo` | Roo Code | `.roo/commands/fingerprint.md` | `/fingerprint` |
+| `antigravity` | Google Antigravity | `.agents/skills/fingerprint/SKILL.md` | `/fingerprint` |
+| `gemini` | Gemini CLI（企业版） | `.gemini/commands/fingerprint.toml` | `/fingerprint` |
 
-> 凡是能执行终端命令的助手，都会在 `/fingerprint` 里自动跑完 `ccfp verify`；不能执行命令的助手退化为"生成报告 + 提示你手动评分"。
+Skill 文件设置了 `disable-model-invocation: true`，只有你主动调用时才会运行。
 
 ## 工作原理
 
 ```
 ccfp init  →  /fingerprint  ┌─ 模型作答 → ccfp-report.json → 模型自己跑 ccfp verify ─┐ →  鉴定结论
- 安装提示词    (一条命令)     └──────────── 全部在一次 /fingerprint 内完成 ───────────┘    + ccfp-verdict.md
+ 安装命令      (一条命令)     └──────────── 全部在一次 /fingerprint 内完成 ───────────┘    + ccfp-verdict.md
 ```
 
 模型作答四类探针（提示词里**只有题目、没有答案**）：
 
 1. **自我声明**：自报模型 ID、开发商、上下文长度、知识截止——仅作记录与比对，不作为可信依据。
-2. **知识边界探针**：带日期锚点的时间敏感题，用于推断**真实**知识截止；并检测"自信编造"。
-3. **能力探针（降智检测）**：分难度等级、答案唯一可校验的硬题（计数、混合推理、严格指令遵循、needle 召回、逻辑推理）。通过率过低 = 疑似被换成更弱的模型。
-4. **风格指纹**：ASCII 签名等风格信号，供人工参考。
+2. **知识边界探针**：带日期锚点的时间敏感题，用于推断**真实**知识截止、检测"自信编造"，以及发现联网作弊（知道自称截止日期之后的事）。
+3. **能力探针（降智检测）**：分难度等级、答案唯一可校验的题（计数、严格指令遵循、带干扰项的 needle 召回、代码追踪、日历推算、逻辑推理、数论）。通过率过低 = 疑似被换成更弱的模型。
+4. **风格指纹**：ASCII 签名，供人工参考。
 
-`ccfp verify` 离线读取报告，按内置答案键确定性打分，推断真实知识截止、计算能力通过率、做一致性检查（自称 vs 表现），最后给出 0–100 可信度评分与结论（可信 / 存疑 / 不可信）。**整个评分过程不经过被测模型。**
+`ccfp verify` 离线读取报告，按内置答案键确定性打分，推断真实知识截止、计算能力通过率，核对"自称身份"与"表现出的知识"是否一致，最后给出 0–100 可信度评分与结论（可信 / 存疑 / 不可信）。**整个评分过程不经过被测模型。**
 
 ## 更新知识题库
 
-所有探针都在 `src/dataset.json`。随着模型知识截止前移，旧锚点会失去区分度——增删 `knowledge` 条目（带 `date` 与 `check`）即可，无需改动其他代码。`check` 字段是答案键，只被 `ccfp verify` 使用，永远不会出现在模型看到的提示词中。
+全部数据都在 `src/dataset.json`：
+
+- `knowledge`：带日期的知识探针（`date` + `check`）；"X 是什么时候发布的"这类题用 `{"month": "YYYY-MM"}`。
+- `identities`：模型 ID 匹配规则，含发布月份，以及（若官方公布）知识截止月份。
+
+随着模型知识截止前移，增补锚点与身份条目即可，无需改动代码。答案键只被 `ccfp verify` 使用，永远不会出现在模型看到的提示词中。
 
 ## 许可证
 

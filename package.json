@@ -1,6 +1,6 @@
 {
   "name": "ccfingerprint",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "AI Model Identity Fingerprinting Tool - Detect model downgrades via capability probes + deterministic local scoring / AI 模型身份指纹识别工具 - 用能力探针与本地确定性评分检测模型降智",
   "main": "src/init.js",
   "bin": {
@@ -27,7 +27,13 @@
     "cline",
     "trae",
     "identity",
-    "verification"
+    "verification",
+    "codex",
+    "gemini",
+    "opencode",
+    "qwen",
+    "antigravity",
+    "agent-skills"
   ],
   "author": "honeymeta <dev@honeymeta.com>",
   "license": "MIT",
@@ -42,14 +48,14 @@
   "files": [
     "bin",
     "src",
-    "README.md"
+    "README.md",
+    "README_EN.md"
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20"
   },
   "dependencies": {
-    "commander": "^12.0.0",
-    "chalk": "^5.3.0"
+    "commander": "^14.0.0"
   },
   "type": "module"
 }
