@@ -92,6 +92,17 @@ describe('identities', () => {
     assert.strictEqual(findIdentity('gpt-5', dataset).label, 'GPT-5');
     assert.strictEqual(findIdentity('my-local-llm', dataset), null);
   });
+  it('knows the November 2026 lineup', () => {
+    assert.strictEqual(findIdentity('claude-fable-5-2', dataset).label, 'Claude Fable 5.2');
+    assert.strictEqual(findIdentity('claude-fable-5-1', dataset).label, 'Claude Fable 5.1');
+    assert.strictEqual(findIdentity('claude-sonnet-5-5', dataset).label, 'Claude Sonnet 5.5');
+    assert.strictEqual(findIdentity('claude-haiku-5-5', dataset).label, 'Claude Haiku 5.5');
+    assert.strictEqual(findIdentity('kimi-k3.1-pro', dataset).label, 'Kimi K3.1');
+    assert.strictEqual(findIdentity('glm-5.3', dataset).label, 'GLM-5.3');
+    assert.strictEqual(findIdentity('glm-5', dataset).label, 'GLM-5');
+    assert.strictEqual(findIdentity('deepseek-v4.1-flash', dataset).label, 'DeepSeek V4.1');
+    assert.strictEqual(findIdentity('qwen3.8-max', dataset).label, 'Qwen 3.8');
+  });
 });
 
 describe('verifyReport end-to-end', () => {

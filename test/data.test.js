@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { loadDataset, buildPrompt, SUPPORTED_AI } from '../src/init.js';
+import { loadDataset, buildPrompt, SUPPORTED_AI, probeSet } from '../src/init.js';
 import { monthValue } from '../src/verify.js';
 
 const dataset = loadDataset();
@@ -34,6 +34,16 @@ describe('dataset integrity', () => {
     }
     const dates = dataset.knowledge.map((q) => q.date);
     assert.deepStrictEqual(dates, [...dates].sort());
+  });
+
+  it('the quick probe set still covers every tier and spans the knowledge timeline', () => {
+    const quick = probeSet(dataset, 'quick');
+    assert.deepStrictEqual(quick.self_declare.map((q) => q.id).sort(), ['knowledge_cutoff', 'model_id', 'provider']);
+    assert.deepStrictEqual([...new Set(quick.capability.map((q) => q.tier))].sort(), [1, 2, 3]);
+    const dates = quick.knowledge.map((q) => q.date);
+    assert.ok(dates.filter((d) => d < '2026-01').length >= 3, 'quick set needs older anchors for the identity check');
+    assert.ok(dates.some((d) => d >= '2026-09'), 'quick set needs a recent anchor to spot web lookups');
+    assert.strictEqual(probeSet(dataset, 'full'), dataset);
   });
 
   it('capability probes carry tier, weight and a checkable answer key', () => {

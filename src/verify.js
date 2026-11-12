@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { loadDataset } from './init.js';
+import { loadDataset, probeSet } from './init.js';
 
 // ---------- answer normalization & checking ----------
 
@@ -181,7 +181,8 @@ export function identitySelfCheck(identity, knowledge) {
   return null;
 }
 
-export function verifyReport(report, dataset) {
+// Scores one set of answers (one run). verifyReport() combines runs and API-level signals.
+export function scoreRun(report, dataset) {
   const answers = report.answers || {};
   const claimed = report.claimed || {};
 
@@ -241,11 +242,7 @@ export function verifyReport(report, dataset) {
   if (knowsLater) confidence -= 15;
   if (overclaimsCutoff) confidence -= 10;
   confidence = Math.max(0, Math.min(100, confidence));
-
-  let conclusion;
-  if (confidence >= 75 && !capDowngrade && !identityMismatch) conclusion = '可信 / trustworthy';
-  else if (confidence >= 50) conclusion = '存疑 / questionable';
-  else conclusion = '不可信 / not trustworthy';
+  const { level, conclusion } = conclude(confidence, capDowngrade || !!identityMismatch);
 
   return {
     claimed,
@@ -262,8 +259,249 @@ export function verifyReport(report, dataset) {
     overclaimsCutoff,
     flags,
     confidence,
+    level,
     conclusion,
     ascii: answers.ascii_signature || ''
+  };
+}
+
+const CONCLUSIONS = {
+  trustworthy: '可信 / trustworthy',
+  questionable: '存疑 / questionable',
+  untrustworthy: '不可信 / not trustworthy'
+};
+
+// `blocked`: a hard signal (downgrade, identity mismatch, mixed routing …) that rules out "trustworthy".
+export function conclude(confidence, blocked) {
+  const level = confidence >= 75 && !blocked ? 'trustworthy' : confidence >= 50 ? 'questionable' : 'untrustworthy';
+  return { level, conclusion: CONCLUSIONS[level] };
+}
+
+// ---------- API-level signals (reports written by `ccfp probe`) ----------
+
+const squash = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Does the `model` field the API returned name the model that was requested?
+export function sameModel(requested, returned, dataset) {
+  if (!requested || !returned) return true;
+  const a = findIdentity(requested, dataset);
+  const b = findIdentity(returned, dataset);
+  if (a && b) return a.label === b.label;
+  const x = squash(requested);
+  const y = squash(returned);
+  return x.includes(y) || y.includes(x);
+}
+
+function countBy(values) {
+  const m = new Map();
+  for (const v of values) m.set(v, (m.get(v) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }));
+}
+
+const CAP_SPREAD_LIMIT = 0.35;
+const NATIVE_THINK_FAMILIES = /^(Claude|GPT|Gemini)/;
+
+export function analyzeApi(report, scoredRuns, dataset) {
+  const api = report.api || {};
+  const runs = report.runs?.length ? report.runs : [report];
+  const metas = runs.map((r) => r.meta || {});
+  const calls = [...metas.flatMap((m) => Object.values(m)), ...(api.canary || [])];
+
+  // 1. the `model` field in responses (relays often rewrite it to echo the request, so only a mismatch counts)
+  const returnedModels = countBy(calls.map((c) => c.model).filter(Boolean));
+  const foreignModels = returnedModels.filter((m) => !sameModel(api.model, m.value, dataset));
+
+  // 2. identical request bytes must yield identical prompt-token counts on one backend
+  const tokensByPrompt = new Map();
+  metas.forEach((m) => {
+    for (const [id, c] of Object.entries(m)) {
+      if (Number.isFinite(c.prompt_tokens)) tokensByPrompt.set(id, [...(tokensByPrompt.get(id) || []), c.prompt_tokens]);
+    }
+  });
+  const canaryTokens = (api.canary || []).map((c) => c.prompt_tokens).filter(Number.isFinite);
+  if (canaryTokens.length) tokensByPrompt.set('canary', canaryTokens);
+  const tokenDrift = [...tokensByPrompt.entries()]
+    .filter(([, list]) => new Set(list).size > 1)
+    .map(([id, list]) => ({ id, values: [...new Set(list)] }));
+
+  // 3. the self-declared identity and the capability level should not change between runs
+  const claimedIds = [...new Set(runs.map((r) => r.claimed?.model_id).filter(Boolean).map((id) => findIdentity(id, dataset)?.label || squash(id)))];
+  const ratios = scoredRuns.map((s) => s.capRatio);
+  const capSpread = ratios.length > 1 ? Math.max(...ratios) - Math.min(...ratios) : 0;
+
+  const reasons = [];
+  if (tokenDrift.length) reasons.push('tokens');
+  if (returnedModels.length > 1 && foreignModels.length) reasons.push('model-field');
+  if (claimedIds.length > 1) reasons.push('self-id');
+  if (capSpread >= CAP_SPREAD_LIMIT) reasons.push('capability');
+
+  // 4. <think> tags in the visible answer are typical of DeepSeek/Qwen-style open models, never of Claude/GPT/Gemini
+  const thinkTags = calls.filter((c) => c.think).length;
+  const requestedIdentity = findIdentity(api.model, dataset);
+  const thinkLeak = thinkTags > 0 && !!requestedIdentity && NATIVE_THINK_FAMILIES.test(requestedIdentity.label);
+
+  const errors = calls.filter((c) => c.error).length;
+  const notes = [];
+  if (api.protocol === 'anthropic') {
+    const foreignIds = calls.filter((c) => c.id && !String(c.id).startsWith('msg_')).length;
+    if (foreignIds) notes.push(`${foreignIds} 个响应 id 不是 Anthropic 的 msg_ 格式，中转把其他协议转换成了 Messages 格式 / ${foreignIds} response ids are not Anthropic-style (msg_…): the relay converts from another API format`);
+  }
+  if (calls.some((c) => c.reasoning_field)) {
+    notes.push('响应带有 reasoning_content 字段（DeepSeek/Qwen 风格，也可能是中转改写）/ responses carry a reasoning_content field (DeepSeek/Qwen style, or added by the relay)');
+  }
+
+  return {
+    protocol: api.protocol,
+    requested: api.model,
+    calls: calls.length,
+    errors,
+    errorRate: calls.length ? errors / calls.length : 0,
+    returnedModels,
+    foreignModels,
+    modelMismatch: foreignModels.length > 0,
+    tokenDrift,
+    claimedIds,
+    capSpread,
+    mixedRouting: reasons.length > 0,
+    mixedReasons: reasons,
+    canaryTokens: canaryTokens.length ? canaryTokens[0] : null,
+    thinkTags,
+    thinkLeak,
+    notes
+  };
+}
+
+// Compare a suspect report with a reference report taken from the official API (same dataset/lang/probe set).
+export function compareBaseline(report, baseline, dataset) {
+  const why = [];
+  if ((report.dataset_version || '') !== (baseline.dataset_version || '')) why.push('dataset_version');
+  if ((report.lang || '') !== (baseline.lang || '')) why.push('lang');
+  if ((report.probe_set || 'full') !== (baseline.probe_set || 'full')) why.push('probe_set');
+  const result = { comparable: why.length === 0, why, model: baseline.api?.model || baseline.claimed?.model_id || null };
+  if (!result.comparable) return result;
+
+  // prompt tokens: only meaningful when both used the same protocol (the request bytes are then identical)
+  const sameProtocol = !!report.api && report.api.protocol === baseline.api?.protocol;
+  const tokensOf = (r) => {
+    const out = {};
+    const meta = (r.runs?.[0] || r).meta || {};
+    for (const [id, c] of Object.entries(meta)) if (Number.isFinite(c.prompt_tokens)) out[id] = c.prompt_tokens;
+    const canary = (r.api?.canary || []).find((c) => Number.isFinite(c.prompt_tokens));
+    if (canary) out.canary = canary.prompt_tokens;
+    return out;
+  };
+  if (sameProtocol) {
+    const a = tokensOf(report);
+    const b = tokensOf(baseline);
+    const deltas = Object.keys(a).filter((id) => id in b).map((id) => a[id] - b[id]);
+    if (deltas.length) {
+      const distinct = [...new Set(deltas)];
+      result.tokenCompared = deltas.length;
+      result.tokenMatch = distinct.length === 1 && distinct[0] === 0;
+      result.tokenOffset = distinct.length === 1 && distinct[0] !== 0 ? distinct[0] : null;
+      result.tokenizerDiffers = distinct.length > 1;
+    }
+  }
+
+  const base = verifyReport(baseline, dataset);
+  const mine = verifyReport(report, dataset, { skipBaseline: true });
+  result.baseCapRatio = base.capRatio;
+  result.capDrop = base.capRatio - mine.capRatio;
+  result.lessKnown = base.knowledge.filter((k) => k.known)
+    .filter((k) => !mine.knowledge.find((m) => m.id === k.id)?.known).map((k) => k.id);
+  return result;
+}
+
+export function verifyReport(report, dataset, options = {}) {
+  const ds = probeSet(dataset, report.probe_set);
+  const runs = Array.isArray(report.runs) && report.runs.length ? report.runs : [report];
+  const scored = runs.map((r) => scoreRun({ claimed: r.claimed || report.claimed, answers: r.answers || {} }, ds));
+  // a relay that rotates models is judged by its worst run
+  const worst = scored.reduce((w, s) => (s.confidence < w.confidence ? s : w), scored[0]);
+  const v = { ...worst, flags: [...worst.flags], probeSet: report.probe_set || 'full' };
+  if (scored.length > 1) {
+    v.runs = scored.map((s, i) => ({ run: i + 1, model_id: s.claimed?.model_id || '', capRatio: s.capRatio, confidence: s.confidence, latestKnown: s.cutoff.latestKnown }));
+  }
+
+  let confidence = worst.confidence;
+  let blocked = worst.capDowngrade || !!worst.identityMismatch;
+
+  if (report.api) {
+    const api = analyzeApi(report, scored, ds);
+    v.api = api;
+    if (api.modelMismatch) {
+      confidence -= 25;
+      blocked = true;
+      v.flags.push(`接口返回的 model 字段是 ${api.foreignModels.map((m) => m.value).join(', ')}，与请求的 ${api.requested} 不符（强替换信号）/ the API answered as ${api.foreignModels.map((m) => m.value).join(', ')}, not the requested ${api.requested}`);
+    }
+    if (api.mixedRouting) {
+      confidence -= 25;
+      blocked = true;
+      const detail = [];
+      if (api.tokenDrift.length) detail.push(`相同请求的输入 token 数不一致 (${api.tokenDrift.slice(0, 3).map((d) => `${d.id}: ${d.values.join('/')}`).join('; ')}) / identical requests got different prompt-token counts`);
+      if (api.mixedReasons.includes('model-field')) detail.push(`返回了多个不同的 model 字段 / several different model fields: ${api.returnedModels.map((m) => `${m.value}×${m.count}`).join(', ')}`);
+      if (api.mixedReasons.includes('self-id')) detail.push(`不同轮次自称不同模型 / self-declared identity changes between runs: ${api.claimedIds.join(', ')}`);
+      if (api.mixedReasons.includes('capability')) detail.push(`各轮能力通过率相差 ${Math.round(api.capSpread * 100)} 个百分点 / capability pass-rate varies by ${Math.round(api.capSpread * 100)} points between runs`);
+      v.flags.push(`疑似混合/轮换路由（同一接口背后不止一个模型）/ suspected mixed or rotating routing: ${detail.join('; ')}`);
+    }
+    if (api.thinkLeak) {
+      confidence -= 15;
+      v.flags.push(`${api.thinkTags} 个回答带 <think> 标签，这是 DeepSeek/Qwen 类开源模型的特征，${api.requested} 不会这样输出 / ${api.thinkTags} answers contain <think> tags, typical of DeepSeek/Qwen-style models, not of ${api.requested}`);
+    }
+    if (api.errorRate > 0.2) {
+      v.flags.push(`${api.errors}/${api.calls} 个请求失败，结果不完整，请重跑 / ${api.errors}/${api.calls} requests failed; the result is incomplete, re-run it`);
+    }
+  }
+
+  if (options.baseline && !options.skipBaseline) {
+    const b = compareBaseline(report, options.baseline, dataset);
+    v.baseline = b;
+    if (!b.comparable) {
+      v.flags.push(`基准报告不可比（${b.why.join(', ')} 不同），已忽略 / baseline ignored: different ${b.why.join(', ')}`);
+    } else {
+      if (b.tokenizerDiffers) {
+        confidence -= 25;
+        blocked = true;
+        v.flags.push('与官方基准相比，相同请求的输入 token 数差异不固定：分词器不同，背后很可能是另一个模型 / prompt-token counts differ from the official baseline by varying amounts: a different tokenizer, most likely a different model');
+      } else if (b.tokenOffset) {
+        confidence -= 10;
+        v.flags.push(`与官方基准相比，每个请求固定多出 ${b.tokenOffset} 个输入 token：中转注入了隐藏系统提示词或改写了请求 / every request carries ${b.tokenOffset} extra prompt tokens vs the official baseline: the relay injects a hidden system prompt or rewrites requests`);
+      }
+      if (b.capDrop >= 0.3) {
+        confidence -= 15;
+        blocked = true;
+        v.flags.push(`能力通过率比官方基准低 ${Math.round(b.capDrop * 100)} 个百分点 / capability pass-rate is ${Math.round(b.capDrop * 100)} points below the official baseline`);
+      }
+      if (b.lessKnown.length >= 3) {
+        confidence -= 10;
+        v.flags.push(`官方模型知道、此接口却不知道的事件 ${b.lessKnown.length} 个 / does not know ${b.lessKnown.length} events the official model knows: ${b.lessKnown.join(', ')}`);
+      }
+    }
+  }
+
+  v.confidence = Math.max(0, Math.min(100, confidence));
+  Object.assign(v, conclude(v.confidence, blocked));
+  return v;
+}
+
+// Machine-readable verdict for CI (`--json`). Answer keys are left out.
+export function verdictJson(v, dataset) {
+  return {
+    tool: 'ccfingerprint',
+    dataset: dataset.version,
+    level: v.level,
+    conclusion: v.conclusion,
+    confidence: v.confidence,
+    probe_set: v.probeSet,
+    claimed: v.claimed,
+    identity: v.identity ? v.identity.label : null,
+    capability: { ratio: Number(v.capRatio.toFixed(3)), label: v.capLabel, downgrade: v.capDowngrade, failed: v.capability.filter((c) => !c.pass).map((c) => c.id) },
+    knowledge: { latest_known: v.cutoff.latestKnown, earliest_unknown: v.cutoff.earliestUnknown, fabricated: v.fabrications.map((f) => f.id) },
+    identity_mismatch: v.identityMismatch,
+    runs: v.runs || null,
+    api: v.api || null,
+    baseline: v.baseline || null,
+    flags: v.flags
   };
 }
 
@@ -275,7 +513,7 @@ export function renderVerdict(v, dataset) {
   const lines = [];
   lines.push('# AI 模型身份鉴定报告 / Identity Verdict');
   lines.push('');
-  lines.push(`> dataset ${dataset.version} (${dataset.updated}) · 仅凭模型作答 + 本地确定性评分，无模型自评`);
+  lines.push(`> dataset ${dataset.version} (${dataset.updated})${v.probeSet === 'quick' ? ' · 快速探针集 / quick probe set' : ''} · 仅凭模型作答 + 本地确定性评分，无模型自评`);
   lines.push('');
   lines.push('## 自称信息 / Claimed');
   lines.push('| 项目 | 值 |');
@@ -309,6 +547,50 @@ export function renderVerdict(v, dataset) {
   lines.push(`能力通过率：**${Math.round(v.capRatio * 100)}%** — ${v.capLabel}`);
   lines.push('');
 
+  if (v.runs) {
+    lines.push('## 多轮结果 / Runs (按最差一轮判定 / judged by the worst run)');
+    lines.push('| 轮次 | 自称模型 | 能力通过率 | 推断截止 | 可信度 |');
+    lines.push('|------|----------|------------|----------|--------|');
+    for (const r of v.runs) lines.push(`| ${r.run} | ${r.model_id || '-'} | ${Math.round(r.capRatio * 100)}% | ${r.latestKnown || '-'} | ${r.confidence} |`);
+    lines.push('');
+  }
+
+  if (v.api) {
+    const a = v.api;
+    lines.push('## 接口信号 / API signals');
+    lines.push('| 项目 | 值 |');
+    lines.push('|------|-----|');
+    lines.push(`| 协议 / protocol | ${a.protocol || '-'} |`);
+    lines.push(`| 请求模型 / requested | ${a.requested || '-'} |`);
+    lines.push(`| 返回的 model 字段 / returned | ${a.returnedModels.map((m) => `${m.value}×${m.count}`).join(', ') || '-'} ${yn(!a.modelMismatch)} |`);
+    lines.push(`| 输入 token 稳定 / prompt tokens stable | ${yn(!a.tokenDrift.length)}${a.canaryTokens != null ? ` (canary = ${a.canaryTokens})` : ''} |`);
+    lines.push(`| 路由一致 / single backend | ${yn(!a.mixedRouting)}${a.mixedReasons.length ? ` (${a.mixedReasons.join(', ')})` : ''} |`);
+    lines.push(`| <think> 标签 / think tags | ${a.thinkTags} |`);
+    lines.push(`| 失败请求 / failed requests | ${a.errors}/${a.calls} |`);
+    lines.push('');
+    for (const n of a.notes) lines.push(`- ℹ ${n}`);
+    if (a.notes.length) lines.push('');
+  }
+
+  if (v.baseline) {
+    const b = v.baseline;
+    lines.push(`## 与官方基准对比 / Baseline (${b.model || '-'})`);
+    if (!b.comparable) {
+      lines.push(`不可比 / not comparable: ${b.why.join(', ')}`);
+    } else {
+      const tok = b.tokenCompared == null ? '未比较（协议不同或无 usage）/ not compared'
+        : b.tokenMatch ? `一致 / identical (${b.tokenCompared})`
+          : b.tokenOffset ? `固定偏移 / constant offset ${b.tokenOffset > 0 ? '+' : ''}${b.tokenOffset}`
+            : '不一致 / tokenizer differs';
+      lines.push('| 项目 | 值 |');
+      lines.push('|------|-----|');
+      lines.push(`| 输入 token / prompt tokens | ${tok} |`);
+      lines.push(`| 基准能力通过率 / baseline capability | ${Math.round(b.baseCapRatio * 100)}% (差 / drop ${Math.round(b.capDrop * 100)}) |`);
+      lines.push(`| 基准知道而此处不知道 / known only by baseline | ${b.lessKnown.join(', ') || '-'} |`);
+    }
+    lines.push('');
+  }
+
   if (v.flags.length) {
     lines.push('## ⚠ 疑点 / Flags');
     for (const f of v.flags) lines.push(`- ${f}`);
@@ -336,26 +618,46 @@ export function renderVerdict(v, dataset) {
 
 // ---------- CLI entry ----------
 
-export async function verify(reportPath, options = {}) {
-  const lang = options.lang || 'zh';
-  const file = reportPath || 'ccfp-report.json';
-
+export function readJsonFile(file, lang) {
   if (!fs.existsSync(file)) {
     console.error(lang === 'en'
-      ? `Error: report file not found "${file}". Run /fingerprint first to generate ccfp-report.json.`
-      : `错误: 找不到报告文件 "${file}"。请先在 AI 助手中运行 /fingerprint 生成 ccfp-report.json。`);
+      ? `Error: file not found "${file}". Run /fingerprint (or ccfp probe) first to generate a report.`
+      : `错误: 找不到文件 "${file}"。请先在 AI 助手中运行 /fingerprint（或 ccfp probe）生成报告。`);
     process.exit(1);
   }
-
-  let report;
   try {
-    report = JSON.parse(fs.readFileSync(file, 'utf-8'));
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
   } catch (e) {
-    console.error(lang === 'en'
-      ? `Error: "${file}" is not valid JSON. ${e.message}`
-      : `错误: "${file}" 不是合法 JSON。${e.message}`);
+    console.error(lang === 'en' ? `Error: "${file}" is not valid JSON. ${e.message}` : `错误: "${file}" 不是合法 JSON。${e.message}`);
     process.exit(1);
   }
+}
+
+// Print / save the verdict and set the exit code: 0 ok, 1 error, 2 confidence below --fail-under.
+export function emitVerdict(v, dataset, options = {}) {
+  const lang = options.lang || 'zh';
+  const md = renderVerdict(v, dataset);
+  const outPath = options.output || 'ccfp-verdict.md';
+  fs.writeFileSync(outPath, md, 'utf-8');
+  if (options.json) {
+    console.log(JSON.stringify(verdictJson(v, dataset), null, 2));
+  } else {
+    console.log(md);
+    console.log('\n' + (lang === 'en' ? `Saved verdict to ${outPath}` : `已保存鉴定报告: ${outPath}`));
+  }
+  const threshold = options.failUnder == null ? NaN : Number(options.failUnder);
+  if (Number.isFinite(threshold) && v.confidence < threshold) {
+    console.error(lang === 'en'
+      ? `ccfp: confidence ${v.confidence} is below --fail-under ${threshold}`
+      : `ccfp: 可信度 ${v.confidence} 低于 --fail-under ${threshold}`);
+    process.exitCode = 2;
+  }
+}
+
+export async function verify(reportPath, options = {}) {
+  const lang = options.lang || 'zh';
+  const report = readJsonFile(reportPath || 'ccfp-report.json', lang);
+  const baseline = options.baseline ? readJsonFile(options.baseline, lang) : null;
 
   const dataset = loadDataset();
   if (report.dataset_version && report.dataset_version !== dataset.version) {
@@ -363,14 +665,7 @@ export async function verify(reportPath, options = {}) {
       ? `Warning: report was generated with dataset ${report.dataset_version}, scoring with ${dataset.version}. Re-run ccfp init and /fingerprint for exact results.`
       : `警告: 报告由 dataset ${report.dataset_version} 生成，当前评分用 ${dataset.version}。建议重新 ccfp init 并运行 /fingerprint。`);
   }
-  const v = verifyReport(report, dataset);
-  const md = renderVerdict(v, dataset);
-
-  console.log(md);
-
-  const outPath = options.output || 'ccfp-verdict.md';
-  fs.writeFileSync(outPath, md, 'utf-8');
-  console.log('\n' + (lang === 'en' ? `Saved verdict to ${outPath}` : `已保存鉴定报告: ${outPath}`));
-
+  const v = verifyReport(report, dataset, { baseline });
+  emitVerdict(v, dataset, options);
   return v;
 }

@@ -76,6 +76,19 @@ export function loadDataset() {
   return JSON.parse(fs.readFileSync(path.join(__dirname, 'dataset.json'), 'utf-8'));
 }
 
+// 'quick' keeps only probes marked `quick: true` (about half the requests); anything else is the full set.
+export function probeSet(dataset, set) {
+  if (set !== 'quick') return dataset;
+  const pick = (list) => (list || []).filter((q) => q.quick);
+  return {
+    ...dataset,
+    self_declare: pick(dataset.self_declare),
+    knowledge: pick(dataset.knowledge),
+    capability: pick(dataset.capability),
+    behavior: []
+  };
+}
+
 const TXT = {
   zh: {
     title: 'AI 模型身份指纹识别',
@@ -123,7 +136,8 @@ function numberedList(items, lang) {
   return items.map((it, i) => `${i + 1}. ${it[`prompt_${lang}`]}`).join('\n');
 }
 
-function promptBody(lang, dataset) {
+function promptBody(lang, fullDataset, quick) {
+  const dataset = probeSet(fullDataset, quick ? 'quick' : 'full');
   const t = TXT[lang] || TXT.zh;
   const p = (q) => q[`prompt_${lang}`] || q.prompt_zh;
 
@@ -162,11 +176,11 @@ ${numberedList(dataset.knowledge, lang)}
 ${t.s3note}
 
 ${dataset.capability.map((q, i) => `${i + 1}. ${p(q)}`).join('\n\n')}
-
+${dataset.behavior.length ? `
 ## ${t.s4}
 
 ${dataset.behavior.map((q) => `- ${p(q)}`).join('\n')}
-
+` : ''}
 ---
 
 ## ${t.s5}
@@ -176,6 +190,8 @@ ${t.s5note}
 \`\`\`json
 {
   "dataset_version": "${dataset.version}",
+  "probe_set": "${quick ? 'quick' : 'full'}",
+  "lang": "${lang}",
   "claimed": {
 ${dataset.self_declare.map((q) => `    "${q.id}": ""`).join(',\n')}
   },
@@ -193,9 +209,9 @@ function yamlString(s) {
   return JSON.stringify(s);
 }
 
-export function buildPrompt(ai, lang, dataset) {
+export function buildPrompt(ai, lang, dataset, { quick = false } = {}) {
   const cfg = AI_CONFIGS[ai];
-  const body = promptBody(lang, dataset);
+  const body = promptBody(lang, dataset, quick);
   const marker = `<!-- ${MARKER} · dataset ${dataset.version} -->`;
   switch (cfg.format) {
     case 'skill':
@@ -240,7 +256,7 @@ export function findLegacyFiles(output = '.') {
 }
 
 export async function init(options) {
-  const { ai, output = '.', lang = 'zh', force = false } = options;
+  const { ai, output = '.', lang = 'zh', force = false, quick = false } = options;
   const messages = MESSAGES[lang] || MESSAGES.zh;
 
   const targets = ai === 'all' ? SUPPORTED_AI : [ai];
@@ -257,7 +273,7 @@ export async function init(options) {
     const config = AI_CONFIGS[target];
     const targetPath = path.join(output, config.targetFile);
     if (written.has(targetPath)) continue; // e.g. codex and antigravity share .agents/skills
-    if (!writeGenerated(targetPath, buildPrompt(target, lang, dataset), { force, messages })) continue;
+    if (!writeGenerated(targetPath, buildPrompt(target, lang, dataset, { quick }), { force, messages })) continue;
     written.add(targetPath);
     invokes.add(config.invoke);
     if (config.openaiYaml) {

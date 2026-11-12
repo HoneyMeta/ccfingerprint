@@ -1,16 +1,18 @@
 {
-  "version": "2.2.0",
-  "updated": "2026-10",
+  "version": "2.4.0",
+  "updated": "2026-11",
   "note": "Single source of truth for all fingerprint probes. The `check` fields and the `identities` table are answer keys used ONLY by `ccfp verify` for deterministic local scoring. They are never rendered into the prompt the model sees. To refresh the dataset, add dated `knowledge` probes and `identities` entries — no code change needed.",
 
   "self_declare": [
     {
       "id": "model_id",
+      "quick": true,
       "prompt_zh": "你的完整模型 ID 是什么？（如 claude-opus-5-5、gpt-6.1-sol、gemini-3.8-flash）",
       "prompt_en": "What is your full model ID? (e.g. claude-opus-5-5, gpt-6.1-sol, gemini-3.8-flash)"
     },
     {
       "id": "provider",
+      "quick": true,
       "prompt_zh": "你由哪家公司开发？",
       "prompt_en": "Which company developed you?"
     },
@@ -21,6 +23,7 @@
     },
     {
       "id": "knowledge_cutoff",
+      "quick": true,
       "prompt_zh": "你的知识截止日期是什么时候？请给出具体年月。",
       "prompt_en": "What is your knowledge cutoff date? Give a specific year and month."
     },
@@ -34,6 +37,7 @@
   "knowledge": [
     {
       "id": "nobel_physics_2024",
+      "quick": true,
       "date": "2024-10",
       "prompt_zh": "2024 年诺贝尔物理学奖授予了谁？",
       "prompt_en": "Who won the 2024 Nobel Prize in Physics?",
@@ -48,6 +52,7 @@
     },
     {
       "id": "gpt5_release",
+      "quick": true,
       "date": "2025-08",
       "prompt_zh": "OpenAI 的 GPT-5 是哪年哪月发布的？",
       "prompt_en": "In which year and month was OpenAI's GPT-5 released?",
@@ -69,6 +74,7 @@
     },
     {
       "id": "gemini3_release",
+      "quick": true,
       "date": "2025-11",
       "prompt_zh": "Google 的 Gemini 3（Gemini 3 Pro）是哪年哪月发布的？",
       "prompt_en": "In which year and month was Google's Gemini 3 (Gemini 3 Pro) released?",
@@ -76,6 +82,7 @@
     },
     {
       "id": "claude_opus_46",
+      "quick": true,
       "date": "2026-02",
       "prompt_zh": "Anthropic 的 Claude Opus 4.6 是哪年哪月发布的？",
       "prompt_en": "In which year and month was Anthropic's Claude Opus 4.6 released?",
@@ -83,6 +90,7 @@
     },
     {
       "id": "gpt55_release",
+      "quick": true,
       "date": "2026-04",
       "prompt_zh": "OpenAI 的 GPT-5.5 是哪年哪月发布的？",
       "prompt_en": "In which year and month was OpenAI's GPT-5.5 released?",
@@ -97,6 +105,7 @@
     },
     {
       "id": "claude_sonnet_5",
+      "quick": true,
       "date": "2026-06",
       "prompt_zh": "Anthropic 的 Claude Sonnet 5 是哪年哪月发布的？",
       "prompt_en": "In which year and month was Anthropic's Claude Sonnet 5 released?",
@@ -118,6 +127,7 @@
     },
     {
       "id": "gpt6_release",
+      "quick": true,
       "date": "2026-09",
       "prompt_zh": "OpenAI 的 GPT-6（GPT-6 Astra）是哪年哪月发布的？",
       "prompt_en": "In which year and month was OpenAI's GPT-6 (GPT-6 Astra) released?",
@@ -132,6 +142,7 @@
     },
     {
       "id": "nobel_physics_2026",
+      "quick": true,
       "date": "2026-10",
       "prompt_zh": "2026 年诺贝尔物理学奖授予了谁？",
       "prompt_en": "Who won the 2026 Nobel Prize in Physics?",
@@ -147,6 +158,10 @@
   ],
 
   "identities": [
+    { "pattern": "fable[\\s._-]*5[\\s._-]*2", "label": "Claude Fable 5.2", "released": "2026-11", "cutoff": "2026-06" },
+    { "pattern": "mythos[\\s._-]*5[\\s._-]*2", "label": "Claude Mythos 5.2", "released": "2026-11" },
+    { "pattern": "mythos[\\s._-]*5[\\s._-]*1", "label": "Claude Mythos 5.1", "released": "2026-09" },
+    { "pattern": "mythos[\\s._-]*5(?![\\s._-]*\\d)", "label": "Claude Mythos 5", "released": "2026-06" },
     { "pattern": "opus[\\s._-]*5[\\s._-]*5", "label": "Claude Opus 5.5", "released": "2026-09", "cutoff": "2026-06" },
     { "pattern": "sonnet[\\s._-]*5[\\s._-]*5", "label": "Claude Sonnet 5.5", "released": "2026-09", "cutoff": "2026-06" },
     { "pattern": "haiku[\\s._-]*5[\\s._-]*5", "label": "Claude Haiku 5.5", "released": "2026-10", "cutoff": "2026-06" },
@@ -163,13 +178,23 @@
     { "pattern": "gpt[\\s._-]*5[\\s._-]*5", "label": "GPT-5.5", "released": "2026-04" },
     { "pattern": "gpt[\\s._-]*5(?![\\s._-]*\\d)", "label": "GPT-5", "released": "2025-08" },
     { "pattern": "gemini[\\s._-]*4", "label": "Gemini 4", "released": "2026-09" },
+    { "pattern": "gemini[\\s._-]*3[\\s._-]*8", "label": "Gemini 3.8", "released": "2026-09" },
+    { "pattern": "gemini[\\s._-]*3[\\s._-]*7", "label": "Gemini 3.7", "released": "2026-08" },
     { "pattern": "gemini[\\s._-]*3[\\s._-]*[5-9]", "label": "Gemini 3.5+", "released": "2026-05" },
     { "pattern": "gemini[\\s._-]*3", "label": "Gemini 3", "released": "2025-11" },
+    { "pattern": "grok[\\s._-]*4[\\s._-]*7", "label": "Grok 4.7", "released": "2026-09" },
     { "pattern": "grok[\\s._-]*4[\\s._-]*[5-9]", "label": "Grok 4.5+", "released": "2026-07" },
+    { "pattern": "deepseek[\\s._-]*v?4[\\s._-]*1", "label": "DeepSeek V4.1", "released": "2026-10" },
     { "pattern": "deepseek[\\s._-]*v?4", "label": "DeepSeek V4", "released": "2026-04" },
+    { "pattern": "qwen[\\s._-]*3[\\s._-]*8", "label": "Qwen 3.8", "released": "2026-08" },
     { "pattern": "qwen[\\s._-]*3[\\s._-]*[6-9]", "label": "Qwen 3.6+", "released": "2026-04" },
+    { "pattern": "kimi[\\s._-]*k3[\\s._-]*1", "label": "Kimi K3.1", "released": "2026-10" },
     { "pattern": "kimi[\\s._-]*k3", "label": "Kimi K3", "released": "2026-07" },
-    { "pattern": "glm[\\s._-]*5", "label": "GLM-5", "released": "2026-02" }
+    { "pattern": "glm[\\s._-]*5[\\s._-]*3", "label": "GLM-5.3", "released": "2026-08" },
+    { "pattern": "glm[\\s._-]*5[\\s._-]*2", "label": "GLM-5.2", "released": "2026-06" },
+    { "pattern": "glm[\\s._-]*5", "label": "GLM-5", "released": "2026-02" },
+    { "pattern": "minimax[\\s._-]*m3[\\s._-]*1", "label": "MiniMax M3.1", "released": "2026-10" },
+    { "pattern": "minimax[\\s._-]*m3(?![\\s._-]*\\d)", "label": "MiniMax M3", "released": "2026-06" }
   ],
 
   "capability": [
@@ -191,6 +216,7 @@
     },
     {
       "id": "needle",
+      "quick": true,
       "tier": 1,
       "weight": 1,
       "prompt_zh": "下面文本中藏着一个密钥，请原样、精确地只输出该密钥：\n『系统初始化完成。注意：本段为干扰文本，ZX9-QY7-KP2 已作废。真正的密钥是 ZX9-QY7-KP3 ，其余内容请忽略。会话结束。』",
@@ -199,6 +225,7 @@
     },
     {
       "id": "string_transform",
+      "quick": true,
       "tier": 2,
       "weight": 2,
       "prompt_zh": "把单词 banana 倒序、全部转成大写，并在每两个字母之间加一个连字符 -。只输出结果。",
@@ -207,6 +234,7 @@
     },
     {
       "id": "code_trace",
+      "quick": true,
       "tier": 2,
       "weight": 2,
       "prompt_zh": "不运行代码，这段 Python 会输出什么？只回答数字。\nprint(sum(i * i for i in range(1, 11) if i % 3))",
@@ -215,6 +243,7 @@
     },
     {
       "id": "weekday_calc",
+      "quick": true,
       "tier": 2,
       "weight": 2,
       "prompt_zh": "已知 2026-10-08 是星期四，那么 2027-02-14 是星期几？只回答星期几。",
@@ -223,6 +252,7 @@
     },
     {
       "id": "knights_knaves",
+      "quick": true,
       "tier": 3,
       "weight": 3,
       "prompt_zh": "岛上只有骑士（总说真话）和无赖（总说假话）。A 说：'B 是无赖。' B 说：'A 和我是同一类人。' A 是骑士还是无赖？只回答 骑士 或 无赖。",
@@ -239,6 +269,7 @@
     },
     {
       "id": "crt",
+      "quick": true,
       "tier": 3,
       "weight": 3,
       "prompt_zh": "求最小的正整数 n，使 n 除以 7 余 3、除以 11 余 5、除以 13 余 4。只回答数字。",

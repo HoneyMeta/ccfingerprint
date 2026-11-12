@@ -12,6 +12,16 @@ CCFingerprint 是一个 AI 模型身份指纹识别工具。它让模型作答�
 
 ---
 
+## v2.4 更新了什么？
+
+- **`ccfp probe`：直接检测 API 中转站**。不用装进助手，直接对 OpenAI 兼容接口（`/v1/chat/completions`）或 Anthropic 接口（`/v1/messages`）发探针：每题一个独立请求、不带工具，然后本地评分。除了答题内容，还检查接口本身的信号：返回的 `model` 字段、输入 token 数、`<think>` 标签、响应 id 格式。
+- **发现混合 / 轮换路由**：同一个请求发几次，单一后端返回的输入 token 数必然一样；不一样就说明背后不止一个模型或分词器。`--runs N` 把整套题重复 N 轮，按最差一轮判定，并比较各轮的自称身份和能力通过率。
+- **与官方基准对比**：先用官方 API 跑一次存成基准，再用 `--baseline` 比较中转。相同请求的 token 数一致 = 同一分词器；固定多出 N 个 = 中转注入了隐藏系统提示词；差值不固定 = 换了模型。
+- **多端点对比**：`ccfp compare a.json b.json …` 把多个中转并排列成一张表。
+- **适合 CI**：`--json` 输出机器可读结论，`--fail-under 75` 低于分数时退出码为 2。
+- **快速模式**：`--quick`（`probe` 和 `init` 都支持）只用约一半的题（17 个请求，完整版 31 个），省钱省时间，三个难度等级都保留。
+- **身份表更新到 2026 年 11 月**：Claude Fable 5.2（2026-11 发布，官方知识截止 2026-06）、Mythos 5.x、Gemini 3.7/3.8、Grok 4.7、DeepSeek V4.1、Qwen 3.8、Kimi K3.1、GLM-5.2/5.3、MiniMax M3/M3.1。v2.3 里 `claude-fable-5-2` 匹配不到任何身份。
+
 ## v2.3 更新了什么？
 
 - **14 款助手都装成真正的 `/fingerprint` 命令**：各家助手已普遍改用 Agent Skills / 命令文件，所以每个目标都改为生成独立的、按需调用的命令。旧版写入的 `AGENTS.md`、`.windsurfrules`、`.clinerules`、`copilot-instructions.md` 都是"常驻规则"，会把整套探针注入**每一次**对话，还会覆盖这些文件原有内容；`init` 现在发现这类残留会提示你清理。
@@ -58,21 +68,91 @@ AI 会按下面的「给 AI 的安装步骤」自动完成安装。
 
 英文版加 `--lang en`，例如 `ccfp init --ai claude --lang en`；一次给所有助手安装用 `--ai all`。
 
+## 直接检测 API 中转站（`ccfp probe`）
+
+API key 只从环境变量读取（默认 `CCFP_API_KEY`），不会写进报告。
+
+```bash
+# bash / zsh
+export CCFP_API_KEY=sk-...
+# PowerShell
+$env:CCFP_API_KEY="sk-..."
+
+# OpenAI 兼容接口（大多数中转）
+ccfp probe --base-url https://relay.example.com/v1 --model claude-opus-5-5
+
+# Anthropic Messages 接口，快速模式，重复 3 轮查轮换路由
+ccfp probe --api anthropic --base-url https://relay.example.com --model claude-opus-5-5 --quick --runs 3
+```
+
+`--base-url` 写到 `/v1` 或写域名都行。原始报告存到 `ccfp-report.json`（`--report` 可改），鉴定结论存到 `ccfp-verdict.md`。
+
+**和官方 API 对比（最可靠）**：先用官方 key 跑一次存成基准，再用同样参数测中转：
+
+```bash
+ccfp probe --base-url https://api.anthropic.com --api anthropic --model claude-opus-5-5 --quick --report official.json
+ccfp probe --base-url https://relay.example.com --api anthropic --model claude-opus-5-5 --quick --baseline official.json
+```
+
+基准和被测报告必须用同一版本 dataset、同一 `--lang`、同一探针集（都加或都不加 `--quick`），否则不比。ccfingerprint 不自带任何模型的"标准答案"指纹，基准要你自己用官方接口生成。
+
+**多个中转对比**：
+
+```bash
+ccfp compare relay-a.json relay-b.json relay-c.json --baseline official.json
+```
+
+**接口信号说明**：
+
+| 信号 | 含义 |
+|------|------|
+| 返回的 `model` 字段与请求不符 | 强替换信号。很多中转会把这个字段改成你请求的名字，所以"相符"不能证明什么 |
+| 相同请求的输入 token 数不一致 | 背后不止一个后端（轮换路由，或在多个供应商之间负载均衡） |
+| 与官方基准固定差 N 个 token | 中转注入了隐藏系统提示词或改写了请求 |
+| 与官方基准差值不固定 | 分词器不同，基本可以确定是另一个模型 |
+| Claude / GPT / Gemini 名下出现 `<think>` 标签 | DeepSeek / Qwen 类开源模型的输出特征 |
+| Anthropic 接口返回的 id 不是 `msg_…` | 中转把其他协议转成了 Messages 格式（只作提示，不扣分） |
+
+每题一个请求：完整版约 31 个，`--quick` 约 17 个，另加 3 个极短的 canary 请求（`--canary 0` 关闭）。`--runs N` 会把请求数乘以 N。
+
+## 在 CI 里使用
+
+```bash
+ccfp verify ccfp-report.json --json --fail-under 75
+ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fail-under 75
+```
+
+退出码：`0` 正常；`1` 参数或文件错误；`2` 可信度低于 `--fail-under`。`--json` 把结论（等级、分数、疑点、接口信号）以 JSON 输出到 stdout，Markdown 仍会写到 `--output`。
+
 ## 命令
 
 | 命令 | 描述 |
 |------|------|
 | `ccfp init --ai <type>` | 安装 `/fingerprint` 命令 |
 | `ccfp verify [report]` | 对 `ccfp-report.json` 进行本地评分（默认读取当前目录） |
+| `ccfp probe --base-url <url> --model <id>` | 直接探测一个 API 端点并评分 |
+| `ccfp compare <reports...>` | 多个报告并排对比 |
 
 ### 选项
 
-| 选项 | 描述 | 默认值 |
-|------|------|--------|
-| `--ai <type>` | 目标助手（见下表），或 `all` 一次装全部 | claude |
-| `--lang <language>` | 语言 (zh, en) | zh |
-| `--output <path>` | init: 输出目录 / verify: 鉴定报告文件 | . / ccfp-verdict.md |
-| `--force` | init: 覆盖不是 ccfingerprint 生成的同名文件 | 关 |
+| 选项 | 适用命令 | 描述 | 默认值 |
+|------|----------|------|--------|
+| `--ai <type>` | init | 目标助手（见下表），或 `all` 一次装全部 | claude |
+| `--lang <language>` | 全部 | 语言 (zh, en) | zh |
+| `--output <path>` | 全部 | init: 输出目录；其他: Markdown 结论文件 | . / ccfp-verdict.md / ccfp-compare.md |
+| `--force` | init | 覆盖不是 ccfingerprint 生成的同名文件 | 关 |
+| `--quick` | init, probe | 快速探针集（约一半题目） | 关 |
+| `--json` | verify, probe, compare | 以 JSON 输出结论 | 关 |
+| `--fail-under <score>` | verify, probe, compare | 可信度低于该值时退出码为 2 | - |
+| `--baseline <report>` | verify, probe, compare | 官方接口生成的基准报告 | - |
+| `--api <protocol>` | probe | `openai` 或 `anthropic` | openai |
+| `--api-key-env <name>` | probe | 存放 API key 的环境变量 | CCFP_API_KEY |
+| `--runs <n>` | probe | 整套题重复 n 轮 | 1 |
+| `--canary <n>` | probe | 用于检查 token 稳定性的相同短请求数 | 3 |
+| `--concurrency <n>` | probe | 并发请求数 | 4 |
+| `--max-tokens <n>` / `--temperature <t>` | probe | 默认 anthropic 发 2048、openai 不发；temperature 默认不发 | - |
+| `--timeout <s>` | probe | 单个请求超时秒数 | 120 |
+| `--report <path>` | probe | 原始报告保存位置 | ccfp-report.json |
 
 ## 支持的 AI 助手
 
@@ -111,12 +191,15 @@ ccfp init  →  /fingerprint  ┌─ 模型作答 → ccfp-report.json → 模�
 
 `ccfp verify` 离线读取报告，按内置答案键确定性打分，推断真实知识截止、计算能力通过率，核对"自称身份"与"表现出的知识"是否一致，最后给出 0–100 可信度评分与结论（可信 / 存疑 / 不可信）。**整个评分过程不经过被测模型。**
 
+`ccfp probe` 生成的报告还带有每个请求的接口元数据（返回的 `model`、输入/输出 token 数、响应 id、耗时、是否有 `<think>`），`verify` 会额外检查上面"接口信号"表里的各项。多轮报告按最差一轮打分。
+
 ## 更新知识题库
 
 全部数据都在 `src/dataset.json`：
 
 - `knowledge`：带日期的知识探针（`date` + `check`）；"X 是什么时候发布的"这类题用 `{"month": "YYYY-MM"}`。
-- `identities`：模型 ID 匹配规则，含发布月份，以及（若官方公布）知识截止月份。
+- `identities`：模型 ID 匹配规则，含发布月份，以及（若官方公布）知识截止月份。官方没公布截止日期的就不写 `cutoff`，按发布月份往前推算。
+- 探针上的 `"quick": true` 表示它属于快速探针集。
 
 随着模型知识截止前移，增补锚点与身份条目即可，无需改动代码。答案键只被 `ccfp verify` 使用，永远不会出现在模型看到的提示词中。
 
