@@ -12,6 +12,13 @@ CCFingerprint 是一个 AI 模型身份指纹识别工具。它让模型作答�
 
 ---
 
+## v2.5 更新了什么？
+
+- **一次检测多个端点：`ccfp run --config ccfp.config.json`**。把要测的中转（以及官方 API）写进一个 JSON 文件，ccfp 逐个探测，用同一次运行里测出的官方端点作基准逐个比较，每个端点一份报告，外加一张并排汇总表。key 仍然只放在环境变量里：配置文件里出现 key 会直接拒绝运行。
+- **长期监控、发现悄悄换模型：`ccfp watch --every 6h`、`--history`、`ccfp history`**。每次检测给每个端点往历史文件追加一行。端点和上一次相比出现变化（canary 输入 token 数变了、出现新的 `model` 字段、自称身份变了、出现轮换路由、结论变差、能力通过率掉 25 个百分点以上、知识截止往前退 6 个月以上）时，ccfp 会列出变了什么；加 `--fail-on-drift` 时退出码为 2，方便 cron / CI 报警。
+- **可分享的 HTML 报告**：`verify`、`probe`、`compare`、`history` 加 `--html report.html`（`run` 默认生成）会写出一个独立的网页：结论徽章、表格、浅色/深色模式，不依赖任何外部文件。可以直接发给中转卖家或丢进群里。
+- **Claude 5 系列有测试兜底**：`claude-opus-5-5`、`claude-sonnet-5-5`、`claude-haiku-5-5`、`claude-fable-5-2` 在各家常见写法下（带日期后缀、`anthropic/…`、Bedrock 的 `us.anthropic.…-v1:0`、`[1m]`）都能正确识别。
+
 ## v2.4 更新了什么？
 
 - **`ccfp probe`：直接检测 API 中转站**。不用装进助手，直接对 OpenAI 兼容接口（`/v1/chat/completions`）或 Anthropic 接口（`/v1/messages`）发探针：每题一个独立请求、不带工具，然后本地评分。除了答题内容，还检查接口本身的信号：返回的 `model` 字段、输入 token 数、`<think>` 标签、响应 id 格式。
@@ -115,6 +122,53 @@ ccfp compare relay-a.json relay-b.json relay-c.json --baseline official.json
 
 每题一个请求：完整版约 31 个，`--quick` 约 17 个，另加 3 个极短的 canary 请求（`--canary 0` 关闭）。`--runs N` 会把请求数乘以 N。
 
+## 批量检测与长期监控（`ccfp run` / `ccfp watch`）
+
+把端点写进一个 JSON 文件，例如 `ccfp.config.json`：
+
+```json
+{
+  "lang": "zh",
+  "quick": true,
+  "model": "claude-opus-5-5",
+  "baseline": "official",
+  "out_dir": "ccfp-runs",
+  "endpoints": [
+    { "name": "official", "base_url": "https://api.anthropic.com", "api": "anthropic", "api_key_env": "ANTHROPIC_API_KEY" },
+    { "name": "relay-a", "base_url": "https://relay-a.example.com", "api": "anthropic", "api_key_env": "RELAY_A_KEY" },
+    { "name": "relay-b", "base_url": "https://relay-b.example.com/v1", "api_key_env": "RELAY_B_KEY" }
+  ]
+}
+```
+
+```bash
+ccfp run --config ccfp.config.json                    # 所有端点各测一次
+ccfp watch --config ccfp.config.json --every 6h       # 每 6 小时重复一次，Ctrl+C 停止
+ccfp history ccfp-runs/history.jsonl --html history.html
+```
+
+- 顶层的键对所有端点生效，单个端点可以覆盖。键名就是 `ccfp probe` 的选项（下划线或驼峰都行）：`base_url`、`model`、`api`、`api_key_env`、`quick`、`runs`、`canary`、`concurrency`、`timeout`、`max_tokens`、`temperature`、`lang`、`baseline`。
+- `baseline` 可以写同一文件里另一个端点的名字（它会先测），也可以写一个已保存报告的路径。输入 token 只在同协议的端点之间比较（上例的 `relay-b` 只比较能力和知识）。
+- 运行设置：`out_dir`（默认 `ccfp-runs`）、`history`（默认 `<out_dir>/history.jsonl`）、`html`（默认 `true`）、`fail_under`、`fail_on_drift`。
+- `out_dir` 里的输出：`<name>.json`（原始报告）、`<name>.md` / `<name>.html`（鉴定结论）、`summary.md` / `summary.html`（所有端点并排 + 变化）、`history.jsonl`。
+- 缺 key 的端点会跳过并在汇总里列出，其余照常检测（最后退出码为 1）。
+- 不想让 `watch` 一直挂着，可以用系统的定时任务（cron / 任务计划程序）跑 `ccfp run --config ccfp.config.json --fail-on-drift`。单个端点也行：`ccfp probe … --history history.jsonl --fail-on-drift`。
+
+**和同一端点上一次检测相比，哪些算"变化"：**
+
+| 变化 | 强弱 |
+|------|------|
+| canary 输入 token 数不同（同语言、同 dataset、同协议） | 强：分词器变了，或注入了新的隐藏系统提示词 |
+| 出现以前从没返回过的 `model` 字段 | 强 |
+| 自称身份变了 | 强 |
+| 出现混合 / 轮换路由 | 强 |
+| 结论变差（可信 → 存疑 → 不可信） | 强 |
+| 可信度下降 15 分以上 | 弱 |
+| 能力通过率下降 25 个百分点以上 | 弱 |
+| 推断知识截止往前退 6 个月以上 | 弱 |
+
+阈值都高于单次检测的正常波动，答错一两道题不会报警。`ccfp history --fail-on-drift` 只看每个端点最近一次检测，旧的异常不会让 CI 一直红着。
+
 ## 在 CI 里使用
 
 ```bash
@@ -122,7 +176,7 @@ ccfp verify ccfp-report.json --json --fail-under 75
 ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fail-under 75
 ```
 
-退出码：`0` 正常；`1` 参数或文件错误；`2` 可信度低于 `--fail-under`。`--json` 把结论（等级、分数、疑点、接口信号）以 JSON 输出到 stdout，Markdown 仍会写到 `--output`。
+退出码：`0` 正常；`1` 参数或文件错误；`2` 可信度低于 `--fail-under`，或加了 `--fail-on-drift` 且与上次相比有变化。`--json` 把结论（等级、分数、疑点、接口信号）以 JSON 输出到 stdout，Markdown 仍会写到 `--output`。
 
 ## 命令
 
@@ -132,6 +186,9 @@ ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fa
 | `ccfp verify [report]` | 对 `ccfp-report.json` 进行本地评分（默认读取当前目录） |
 | `ccfp probe --base-url <url> --model <id>` | 直接探测一个 API 端点并评分 |
 | `ccfp compare <reports...>` | 多个报告并排对比 |
+| `ccfp run --config <file>` | 按配置文件检测所有端点、并排对比、记录历史 |
+| `ccfp watch --config <file> --every <间隔>` | 定时重复 `run`（`30m`、`6h`、`1d`） |
+| `ccfp history [file]` | 查看历史和每次之间的变化 |
 
 ### 选项
 
@@ -142,8 +199,8 @@ ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fa
 | `--output <path>` | 全部 | init: 输出目录；其他: Markdown 结论文件 | . / ccfp-verdict.md / ccfp-compare.md |
 | `--force` | init | 覆盖不是 ccfingerprint 生成的同名文件 | 关 |
 | `--quick` | init, probe | 快速探针集（约一半题目） | 关 |
-| `--json` | verify, probe, compare | 以 JSON 输出结论 | 关 |
-| `--fail-under <score>` | verify, probe, compare | 可信度低于该值时退出码为 2 | - |
+| `--json` | verify, probe, compare, run, watch, history | 以 JSON 输出结论 | 关 |
+| `--fail-under <score>` | verify, probe, compare, run, watch | 可信度低于该值时退出码为 2 | - |
 | `--baseline <report>` | verify, probe, compare | 官方接口生成的基准报告 | - |
 | `--api <protocol>` | probe | `openai` 或 `anthropic` | openai |
 | `--api-key-env <name>` | probe | 存放 API key 的环境变量 | CCFP_API_KEY |
@@ -153,6 +210,13 @@ ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fa
 | `--max-tokens <n>` / `--temperature <t>` | probe | 默认 anthropic 发 2048、openai 不发；temperature 默认不发 | - |
 | `--timeout <s>` | probe | 单个请求超时秒数 | 120 |
 | `--report <path>` | probe | 原始报告保存位置 | ccfp-report.json |
+| `--html <path>` | verify, probe, compare, history | 另存一份独立的 HTML 报告 | - |
+| `--history <file>` | probe, run, watch | JSONL 历史文件，并检查与上次相比的变化 | run: `<out_dir>/history.jsonl` |
+| `--fail-on-drift` | probe, run, watch, history | 与上次相比有变化时退出码为 2 | 关 |
+| `--config <file>` | run, watch | 端点配置文件（JSON） | - |
+| `--out-dir <dir>` | run, watch | 报告输出目录 | ccfp-runs |
+| `--every <间隔>` / `--times <n>` | watch | 每轮间隔 / 跑 n 轮后停止 | - / 一直运行 |
+| `--last <n>` | history | 每个端点显示的行数 | 20 |
 
 ## 支持的 AI 助手
 

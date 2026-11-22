@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { loadDataset, probeSet } from './init.js';
+import { renderHtml } from './html.js';
 
 // ---------- answer normalization & checking ----------
 
@@ -501,6 +502,7 @@ export function verdictJson(v, dataset) {
     runs: v.runs || null,
     api: v.api || null,
     baseline: v.baseline || null,
+    drift: v.drift || null,
     flags: v.flags
   };
 }
@@ -591,6 +593,12 @@ export function renderVerdict(v, dataset) {
     lines.push('');
   }
 
+  if (v.drift?.length) {
+    lines.push('## ⚠ 与上一次检测相比的变化 / Changed since the previous run');
+    for (const d of v.drift) lines.push(`- ${d.strong ? '**[强 / strong]** ' : ''}${d.message}`);
+    lines.push('');
+  }
+
   if (v.flags.length) {
     lines.push('## ⚠ 疑点 / Flags');
     for (const f of v.flags) lines.push(`- ${f}`);
@@ -639,6 +647,11 @@ export function emitVerdict(v, dataset, options = {}) {
   const md = renderVerdict(v, dataset);
   const outPath = options.output || 'ccfp-verdict.md';
   fs.writeFileSync(outPath, md, 'utf-8');
+  if (options.html) {
+    const title = `ccfp · ${v.claimed?.model_id || 'verdict'} · ${v.confidence}/100`;
+    fs.writeFileSync(options.html, renderHtml(md, { title, badge: { level: v.level, confidence: v.confidence } }), 'utf-8');
+    console.error(lang === 'en' ? `Saved HTML report to ${options.html}` : `已保存 HTML 报告: ${options.html}`);
+  }
   if (options.json) {
     console.log(JSON.stringify(verdictJson(v, dataset), null, 2));
   } else {

@@ -5,6 +5,8 @@ import { init, SUPPORTED_AI } from '../src/init.js';
 import { verify } from '../src/verify.js';
 import { probe } from '../src/probe.js';
 import { compare } from '../src/compare.js';
+import { run } from '../src/run.js';
+import { history } from '../src/history.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -19,7 +21,7 @@ program
   .name('ccfp')
   .description('AI Model Identity Fingerprinting Tool / AI 模型身份指纹识别工具')
   .version(pkg.version)
-  .addHelpText('after', '\nExit codes: 0 ok · 1 error · 2 confidence below --fail-under');
+  .addHelpText('after', '\nExit codes: 0 ok · 1 error · 2 confidence below --fail-under, or a change with --fail-on-drift');
 
 program
   .command('init')
@@ -38,6 +40,7 @@ const verdictOptions = (cmd, outputDefault) => cmd
   .option('--output <path>', 'Markdown output file / Markdown 输出文件', outputDefault)
   .option('--baseline <report>', 'Reference report from the official API / 官方接口的基准报告')
   .option('--json', 'Print a JSON verdict instead of Markdown / 输出 JSON', false)
+  .option('--html <path>', 'Also save a self-contained, shareable HTML report / 另存一份可分享的 HTML 报告')
   .option('--fail-under <score>', 'Exit with code 2 if the confidence is below this score / 可信度低于该值时退出码为 2');
 
 verdictOptions(program
@@ -61,7 +64,9 @@ verdictOptions(program
   .option('--max-tokens <n>', 'max_tokens per request (anthropic default 2048; openai: not sent)')
   .option('--temperature <t>', 'Sampling temperature (not sent by default)')
   .option('--timeout <seconds>', 'Per-request timeout', '120')
-  .option('--report <path>', 'Where to save the raw report / 原始报告保存位置', 'ccfp-report.json'), 'ccfp-verdict.md')
+  .option('--report <path>', 'Where to save the raw report / 原始报告保存位置', 'ccfp-report.json')
+  .option('--history <file>', 'Append a summary line to this JSONL file and flag changes since the last run / 追加到历史文件并检查变化')
+  .option('--fail-on-drift', 'Exit with code 2 if the endpoint changed since the last run in --history / 有变化时退出码为 2', false), 'ccfp-verdict.md')
   .action(async (options) => {
     await probe(options);
   });
@@ -73,9 +78,47 @@ program
   .option('--output <path>', 'Markdown output file', 'ccfp-compare.md')
   .option('--baseline <report>', 'Reference report from the official API / 官方接口的基准报告')
   .option('--json', 'Print JSON instead of Markdown', false)
+  .option('--html <path>', 'Also save a shareable HTML report / 另存 HTML 报告')
   .option('--fail-under <score>', 'Exit with code 2 if any endpoint scores below this')
   .action(async (reports, options) => {
     await compare(reports, options);
+  });
+
+const runOptions = (cmd) => cmd
+  .requiredOption('--config <file>', 'JSON file listing the endpoints / 端点配置文件 (JSON)')
+  .option('--lang <language>', 'Language (zh, en); overrides the config')
+  .option('--out-dir <dir>', 'Where reports go (default from config, else ccfp-runs)')
+  .option('--history <file>', 'History file (default <out-dir>/history.jsonl)')
+  .option('--json', 'Print JSON instead of Markdown', false)
+  .option('--fail-under <score>', 'Exit with code 2 if any endpoint scores below this')
+  .option('--fail-on-drift', 'Exit with code 2 if any endpoint changed since its previous run', false);
+
+runOptions(program
+  .command('run')
+  .description('Probe every endpoint in a config file, compare them and record history / 按配置文件一次检测多个端点'))
+  .action(async (options) => {
+    await run(options);
+  });
+
+runOptions(program
+  .command('watch')
+  .description('Same as run, repeated on a timer; flags endpoints that change between rounds / 定时重复检测并提示变化'))
+  .requiredOption('--every <interval>', 'Interval between rounds: 30m, 6h, 1d …')
+  .option('--times <n>', 'Stop after n rounds (default: run until stopped)')
+  .action(async (options) => {
+    await run(options, { watch: true });
+  });
+
+program
+  .command('history [file]')
+  .description('Show the probe history and what changed between runs / 查看历史与变化')
+  .option('--lang <language>', 'Language (zh, en)', 'zh')
+  .option('--last <n>', 'Rows per endpoint', '20')
+  .option('--json', 'Print JSON instead of Markdown', false)
+  .option('--html <path>', 'Also save a shareable HTML report / 另存 HTML 报告')
+  .option('--fail-on-drift', 'Exit with code 2 if the latest run of any endpoint changed', false)
+  .action(async (file, options) => {
+    await history(file, options);
   });
 
 program.parse();

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { loadDataset } from './init.js';
 import { verifyReport, verdictJson, readJsonFile } from './verify.js';
+import { renderHtml } from './html.js';
 
 // `ccfp compare`: score several reports (e.g. one per relay) and put them side by side.
 
@@ -15,10 +16,10 @@ function name(file, report) {
 }
 
 export function compareReports(entries, dataset, { baseline } = {}) {
-  const rows = entries.map(({ file, report }) => {
+  const rows = entries.map(({ file, report, name: label }) => {
     const v = verifyReport(report, dataset, { baseline });
     return {
-      name: name(file, report),
+      name: label || name(file, report),
       file,
       verdict: v,
       canary: v.api?.canaryTokens ?? null,
@@ -77,6 +78,10 @@ export async function compare(files, options = {}) {
   const md = renderCompare(result, dataset);
   const outPath = options.output || 'ccfp-compare.md';
   fs.writeFileSync(outPath, md, 'utf-8');
+  if (options.html) {
+    fs.writeFileSync(options.html, renderHtml(md, { title: 'ccfp · endpoint comparison' }), 'utf-8');
+    console.error(lang === 'en' ? `Saved HTML report to ${options.html}` : `已保存 HTML 报告: ${options.html}`);
+  }
   if (options.json) {
     console.log(JSON.stringify({
       tool: 'ccfingerprint',

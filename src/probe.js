@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { loadDataset, probeSet } from './init.js';
 import { verifyReport, emitVerdict, readJsonFile } from './verify.js';
+import { appendHistory, historyRecord } from './history.js';
 
 // `ccfp probe`: send every probe straight to an OpenAI-compatible or Anthropic endpoint (one fresh
 // request per probe, no tools), record what the API returns, then score it with the same verifier.
@@ -191,43 +192,65 @@ export async function runProbe(options) {
 
 // ---------- CLI ----------
 
+// Validate CLI-style options and turn them into runProbe() parameters. Returns { error } or { params }.
+// Shared by `ccfp probe` and `ccfp run --config`.
+export function probeParams(options, env = process.env) {
+  const lang = options.lang || 'zh';
+  const en = lang === 'en';
+  const protocol = String(options.api || 'openai').toLowerCase();
+  if (!['openai', 'anthropic'].includes(protocol)) {
+    return { error: en ? 'Error: --api must be openai or anthropic' : '错误: --api 只能是 openai 或 anthropic' };
+  }
+  if (!options.baseUrl || !options.model) {
+    return { error: en ? 'Error: --base-url and --model are required' : '错误: 必须提供 --base-url 和 --model' };
+  }
+  const keyEnv = options.apiKeyEnv || 'CCFP_API_KEY';
+  const apiKey = env[keyEnv] || (protocol === 'anthropic' ? env.ANTHROPIC_API_KEY : env.OPENAI_API_KEY);
+  if (!apiKey) {
+    return {
+      error: en
+        ? `Error: no API key. Put it in the ${keyEnv} environment variable (the key is never written to the report).`
+        : `错误: 没有 API key。请放在环境变量 ${keyEnv} 中（key 不会写进报告）。`
+    };
+  }
+  const int = (v, d) => (v == null ? d : Math.max(0, parseInt(v, 10) || 0));
+  return {
+    params: {
+      baseUrl: options.baseUrl,
+      model: options.model,
+      apiKey,
+      protocol,
+      lang,
+      quick: !!options.quick,
+      runs: Math.max(1, int(options.runs, 1)),
+      canary: int(options.canary, 3),
+      concurrency: Math.max(1, int(options.concurrency, 4)),
+      maxTokens: options.maxTokens ? int(options.maxTokens) : undefined,
+      temperature: options.temperature != null ? Number(options.temperature) : undefined,
+      timeoutMs: int(options.timeout, 120) * 1000
+    }
+  };
+}
+
+export function printDrift(drift, lang, label = '') {
+  if (!drift.length) return;
+  const en = lang === 'en';
+  console.error(en ? `⚠ ${label}changed since the previous run:` : `⚠ ${label}与上一次检测相比发生了变化：`);
+  for (const d of drift) console.error(`  - ${d.strong ? (en ? '[strong] ' : '[强] ') : ''}${d.message}`);
+}
+
 export async function probe(options) {
   const lang = options.lang || 'zh';
   const en = lang === 'en';
-  const protocol = (options.api || 'openai').toLowerCase();
-  if (!['openai', 'anthropic'].includes(protocol)) {
-    console.error(en ? `Error: --api must be openai or anthropic` : `错误: --api 只能是 openai 或 anthropic`);
+  const { error, params } = probeParams(options);
+  if (error) {
+    console.error(error);
     process.exit(1);
   }
-  if (!options.baseUrl || !options.model) {
-    console.error(en ? 'Error: --base-url and --model are required' : '错误: 必须提供 --base-url 和 --model');
-    process.exit(1);
-  }
-  const keyEnv = options.apiKeyEnv || 'CCFP_API_KEY';
-  const apiKey = process.env[keyEnv] || (protocol === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY);
-  if (!apiKey) {
-    console.error(en
-      ? `Error: no API key. Put it in the ${keyEnv} environment variable (the key is never written to the report).`
-      : `错误: 没有 API key。请放在环境变量 ${keyEnv} 中（key 不会写进报告）。`);
-    process.exit(1);
-  }
-  const int = (v, d) => (v == null ? d : Math.max(0, parseInt(v, 10) || 0));
-  const runs = Math.max(1, int(options.runs, 1));
   const baseline = options.baseline ? readJsonFile(options.baseline, lang) : null;
 
   const report = await runProbe({
-    baseUrl: options.baseUrl,
-    model: options.model,
-    apiKey,
-    protocol,
-    lang,
-    quick: !!options.quick,
-    runs,
-    canary: int(options.canary, 3),
-    concurrency: Math.max(1, int(options.concurrency, 4)),
-    maxTokens: options.maxTokens ? int(options.maxTokens) : undefined,
-    temperature: options.temperature != null ? Number(options.temperature) : undefined,
-    timeoutMs: int(options.timeout, 120) * 1000,
+    ...params,
     onProgress: (d, t) => process.stderr.write(`\r${en ? 'probing' : '探测中'} ${d}/${t}`)
   });
   process.stderr.write('\n');
@@ -238,6 +261,12 @@ export async function probe(options) {
 
   const dataset = loadDataset();
   const v = verifyReport(report, dataset, { baseline });
+  if (options.history) {
+    const { drift } = appendHistory(options.history, historyRecord(report, v, { reportPath }));
+    v.drift = drift;
+    printDrift(drift, lang);
+  }
   emitVerdict(v, dataset, options);
+  if (options.failOnDrift && v.drift?.length) process.exitCode = 2;
   return v;
 }

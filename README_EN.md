@@ -12,6 +12,13 @@ CCFingerprint makes the model answer a set of probes, then scores the answers **
 
 ---
 
+## What's new in v2.5
+
+- **Many endpoints in one run: `ccfp run --config ccfp.config.json`.** List your relays (and the official API) in one JSON file. ccfp probes each of them, compares every relay with the official endpoint probed in the same run, and writes one report per endpoint plus a side-by-side summary. Keys stay in environment variables: a config file that contains a key is refused.
+- **Catch silent swaps over time: `ccfp watch --every 6h`, `--history`, `ccfp history`.** Every run appends one line per endpoint to a history file. When an endpoint changes between runs (a different canary token count, a new `model` field, a different self-declared identity, rotating routing appearing, a worse verdict, a capability drop of 25+ points, knowledge that moved 6+ months back), ccfp says what changed, and `--fail-on-drift` exits with code 2 so cron or CI can alert you.
+- **Shareable HTML reports.** `--html report.html` on `verify`, `probe`, `compare` and `history` (and by default in `run`) writes one self-contained page: verdict badge, tables, light/dark mode, no external files. Send it to the relay seller or drop it in a group chat.
+- **Claude 5 family pinned by tests**: `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` and `claude-fable-5-2` are recognised in the forms vendors and relays use (dated suffixes, `anthropic/…`, Bedrock `us.anthropic.…-v1:0`, `[1m]`).
+
 ## What's new in v2.4
 
 - **`ccfp probe`: test an API relay directly.** No assistant needed. It sends the probes to an OpenAI-compatible endpoint (`/v1/chat/completions`) or an Anthropic endpoint (`/v1/messages`), one fresh request per probe with no tools, and scores the answers locally. It also checks signals from the API itself: the returned `model` field, prompt-token counts, `<think>` tags and response id format.
@@ -113,6 +120,53 @@ ccfp compare relay-a.json relay-b.json relay-c.json --baseline official.json --l
 
 One request per probe: about 31 for the full set, 17 with `--quick`, plus 3 tiny canary requests (`--canary 0` turns them off). `--runs N` multiplies the request count by N.
 
+## Monitor several relays (`ccfp run` / `ccfp watch`)
+
+Put the endpoints in a JSON file, for example `ccfp.config.json`:
+
+```json
+{
+  "lang": "en",
+  "quick": true,
+  "model": "claude-opus-5-5",
+  "baseline": "official",
+  "out_dir": "ccfp-runs",
+  "endpoints": [
+    { "name": "official", "base_url": "https://api.anthropic.com", "api": "anthropic", "api_key_env": "ANTHROPIC_API_KEY" },
+    { "name": "relay-a", "base_url": "https://relay-a.example.com", "api": "anthropic", "api_key_env": "RELAY_A_KEY" },
+    { "name": "relay-b", "base_url": "https://relay-b.example.com/v1", "api_key_env": "RELAY_B_KEY" }
+  ]
+}
+```
+
+```bash
+ccfp run --config ccfp.config.json                    # probe all endpoints once
+ccfp watch --config ccfp.config.json --every 6h       # repeat every 6 hours until stopped (Ctrl+C)
+ccfp history ccfp-runs/history.jsonl --html history.html
+```
+
+- Top-level keys apply to every endpoint; an endpoint can override any of them. Keys are the `ccfp probe` options in snake_case or camelCase: `base_url`, `model`, `api`, `api_key_env`, `quick`, `runs`, `canary`, `concurrency`, `timeout`, `max_tokens`, `temperature`, `lang`, `baseline`.
+- `baseline` is either the name of another endpoint in the same file (it is probed first) or the path of a saved report. Prompt tokens are only compared between endpoints on the same protocol (`relay-b` above is compared on capability and knowledge only).
+- Run settings: `out_dir` (default `ccfp-runs`), `history` (default `<out_dir>/history.jsonl`), `html` (default `true`), `fail_under`, `fail_on_drift`.
+- Output in `out_dir`: `<name>.json` (raw report), `<name>.md` / `<name>.html` (verdict), `summary.md` / `summary.html` (all endpoints side by side, plus what changed), `history.jsonl`.
+- An endpoint whose key is missing is skipped and listed in the summary; the others still run (exit code 1 at the end).
+- Prefer the system scheduler over a long-running `watch`? Run `ccfp run --config ccfp.config.json --fail-on-drift` from cron or Task Scheduler. A single endpoint works too: `ccfp probe … --history history.jsonl --fail-on-drift`.
+
+**What counts as a change since the previous run of the same endpoint:**
+
+| Change | Strength |
+|--------|----------|
+| Canary prompt-token count differs (same language, dataset and protocol) | strong: new tokenizer or a new hidden system prompt |
+| A `model` field that was never returned before | strong |
+| Self-declared identity changed | strong |
+| Mixed / rotating routing appeared | strong |
+| Verdict got worse (trustworthy → questionable → not trustworthy) | strong |
+| Confidence fell by 15+ points | soft |
+| Capability pass-rate fell by 25+ points | soft |
+| Demonstrated knowledge moved 6+ months back | soft |
+
+The thresholds sit above the normal noise of a probe run, so one unlucky answer does not raise an alarm. `ccfp history --fail-on-drift` only looks at the latest run of each endpoint, so an old incident does not keep CI red.
+
 ## Use in CI
 
 ```bash
@@ -120,7 +174,7 @@ ccfp verify ccfp-report.json --json --fail-under 75
 ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fail-under 75
 ```
 
-Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-under`. `--json` prints the verdict (level, score, flags, API signals) as JSON on stdout; the Markdown is still written to `--output`.
+Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-under`, or a change since the previous run with `--fail-on-drift`. `--json` prints the verdict (level, score, flags, API signals) as JSON on stdout; the Markdown is still written to `--output`.
 
 ## Commands
 
@@ -130,6 +184,9 @@ Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-und
 | `ccfp verify [report]` | Score `ccfp-report.json` locally (defaults to current dir) |
 | `ccfp probe --base-url <url> --model <id>` | Probe an API endpoint directly and score it |
 | `ccfp compare <reports...>` | Compare several reports side by side |
+| `ccfp run --config <file>` | Probe every endpoint in a config file, compare, record history |
+| `ccfp watch --config <file> --every <interval>` | `run` on a timer (`30m`, `6h`, `1d`) |
+| `ccfp history [file]` | Show the history and what changed between runs |
 
 ### Options
 
@@ -140,8 +197,8 @@ Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-und
 | `--output <path>` | all | init: output dir; others: Markdown verdict file | . / ccfp-verdict.md / ccfp-compare.md |
 | `--force` | init | Overwrite a target file not generated by ccfingerprint | off |
 | `--quick` | init, probe | Quick probe set (about half the probes) | off |
-| `--json` | verify, probe, compare | Print the verdict as JSON | off |
-| `--fail-under <score>` | verify, probe, compare | Exit with code 2 below this confidence | - |
+| `--json` | verify, probe, compare, run, watch, history | Print the verdict as JSON | off |
+| `--fail-under <score>` | verify, probe, compare, run, watch | Exit with code 2 below this confidence | - |
 | `--baseline <report>` | verify, probe, compare | Baseline report made against the official API | - |
 | `--api <protocol>` | probe | `openai` or `anthropic` | openai |
 | `--api-key-env <name>` | probe | Environment variable holding the API key | CCFP_API_KEY |
@@ -151,6 +208,13 @@ Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-und
 | `--max-tokens <n>` / `--temperature <t>` | probe | Anthropic sends 2048 by default, OpenAI sends none; temperature is not sent by default | - |
 | `--timeout <s>` | probe | Per-request timeout in seconds | 120 |
 | `--report <path>` | probe | Where to save the raw report | ccfp-report.json |
+| `--html <path>` | verify, probe, compare, history | Also write a self-contained HTML report | - |
+| `--history <file>` | probe, run, watch | JSONL history file; flags changes since the previous run | run: `<out_dir>/history.jsonl` |
+| `--fail-on-drift` | probe, run, watch, history | Exit with code 2 if an endpoint changed since its previous run | off |
+| `--config <file>` | run, watch | Endpoint config (JSON) | - |
+| `--out-dir <dir>` | run, watch | Where reports go | ccfp-runs |
+| `--every <interval>` / `--times <n>` | watch | Interval between rounds / stop after n rounds | - / until stopped |
+| `--last <n>` | history | Rows per endpoint | 20 |
 
 ## Supported AI Assistants
 
