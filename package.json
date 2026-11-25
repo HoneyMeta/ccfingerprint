@@ -1,6 +1,6 @@
 {
   "name": "ccfingerprint",
-  "version": "2.5.1",
+  "version": "2.6.0",
   "description": "AI Model Identity Fingerprinting Tool - Detect model downgrades and substitution behind API relays via capability probes, API signals and deterministic local scoring / AI 模型身份指纹识别工具 - 用能力探针、接口信号与本地确定性评分检测中转站降智与换模型",
   "main": "src/init.js",
   "bin": {

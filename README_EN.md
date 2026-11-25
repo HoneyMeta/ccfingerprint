@@ -12,6 +12,13 @@ CCFingerprint makes the model answer a set of probes, then scores the answers **
 
 ---
 
+## What's new in v2.6
+
+- **`ccfp iq`: a dedicated downgrade check.** `probe` asks "is this the model it claims to be?"; `iq` asks "is it running at full strength right now?". It catches a smaller model behind the same name, reasoning effort turned down or off, a truncated long context, a capped output, and requests split onto channels that add a hidden prompt. See [Downgrade check](#downgrade-check-ccfp-iq).
+- **Works for chat apps too**: `ccfp iq --sheet` writes a task sheet to paste into the ChatGPT web app (or any app without an API); `--grade` scores the reply.
+- `"iq": true` in a `ccfp run` / `ccfp watch` config checks every endpoint on a schedule, keeps `iq-history.jsonl`, and flags an endpoint that got worse.
+- Fix [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2) (v2.5.1): the `agents/openai.yaml` written by `ccfp init --ai codex` made Codex hide the skill.
+
 ## What's new in v2.5
 
 - **Many endpoints in one run: `ccfp run --config ccfp.config.json`.** List your relays (and the official API) in one JSON file. ccfp probes each of them, compares every relay with the official endpoint probed in the same run, and writes one report per endpoint plus a side-by-side summary. Keys stay in environment variables: a config file that contains a key is refused.
@@ -120,6 +127,33 @@ ccfp compare relay-a.json relay-b.json relay-c.json --baseline official.json --l
 
 One request per probe: about 31 for the full set, 17 with `--quick`, plus 3 tiny canary requests (`--canary 0` turns them off). `--runs N` multiplies the request count by N.
 
+## Downgrade check (`ccfp iq`)
+
+```bash
+export CCFP_API_KEY=sk-...
+ccfp iq --base-url https://relay.example.com/v1 --model gpt-5.5
+ccfp iq --base-url https://api.openai.com/v1 --model gpt-5.5 --seed 123456 --report official-iq.json   # official baseline
+ccfp iq --base-url https://relay.example.com/v1 --model gpt-5.5 --seed 123456 --baseline official-iq.json
+```
+
+A "downgrade" is usually one of the following, and each has a signal `ccfp iq` measures:
+
+| Downgrade | How it is measured |
+|-----------|--------------------|
+| A smaller / cheaper model | Reasoning tasks at three levels (big multiplication, letter counting, list operations, modular powers, CRT, code tracing, knights and knaves, inclusion–exclusion, sorting, base conversion, date arithmetic), **generated fresh from a random seed on every run** and graded exactly by the script, so they cannot be memorised or answered from a cache. A frontier model that fails the hard tasks or misses easy ones is flagged |
+| Reasoning effort lowered or switched off (the usual GPT case) | `usage.completion_tokens_details.reasoning_tokens`: a reasoning model that reports ~0, or far fewer than the official baseline |
+| Requests split across channels | No text costs more than ~1.2 tokens per character, so a request billed thousands of extra prompt tokens carries a hidden prompt. Some requests with it and some without = requests are split between channels (the pass rates of both groups are compared) |
+| Truncated long context | Codes hidden at the start, middle and end of a prompt of a set size (default 32k tokens); losing the start, or far fewer billed tokens than sent = truncated; far more = inflated billing |
+| Capped output | `--long-output`: asks for 1..1500 and flags a length stop (a model that abbreviates on its own is only noted) |
+| Intermittent downgrades | `--rounds 3` compares rounds; `--history` or `ccfp watch` tracks the score, reasoning tokens and long context over time |
+
+- **Strongest against the official API**: run the same `--seed` on the official endpoint and on the relay, then `--baseline` compares score, hard-task pass rate, reasoning tokens, long context and output speed. Without a baseline, absolute judgments are made only for frontier model names (GPT-5 and later, o-series, Claude, Gemini 2.5 Pro / 3, Grok 4, DeepSeek, Qwen 3 …); light models (mini, nano, flash, haiku …) are only recorded.
+- **Size**: `--level quick` 12 tasks, `standard` 23 (default), `full` 46, plus one long-context request (`--context 0` to skip, `--context 128k` to change the size).
+- **Reasoning settings**: `--reasoning-effort high` (OpenAI protocol, sends `reasoning_effort`), `--thinking-budget 8000` (Anthropic protocol, extended thinking). Otherwise the endpoint's defaults apply.
+- **Chat apps** (e.g. the ChatGPT web app): `ccfp iq --sheet` writes the sheet and prints the seed; paste it, save the whole reply, then `ccfp iq --grade reply.txt --seed <seed> --model <the model you picked>`. Without token data only accuracy is scored; ask it not to use code tools.
+- Output: `ccfp-iq.json` (raw; re-score with `--from`), `ccfp-iq.md`, optional `--html` / `--json`; `--fail-under 70` and `--fail-on-downgrade` for CI.
+- A single run has sampling noise; one or two tasks prove nothing. The **strong** findings are the hard evidence.
+
 ## Monitor several relays (`ccfp run` / `ccfp watch`)
 
 Put the endpoints in a JSON file, for example `ccfp.config.json`:
@@ -146,6 +180,7 @@ ccfp history ccfp-runs/history.jsonl --html history.html
 ```
 
 - Top-level keys apply to every endpoint; an endpoint can override any of them. Keys are the `ccfp probe` options in snake_case or camelCase: `base_url`, `model`, `api`, `api_key_env`, `quick`, `runs`, `canary`, `concurrency`, `timeout`, `max_tokens`, `temperature`, `lang`, `baseline`.
+- `"iq": true` (or `{"level": "standard", "context": 32000, "long_output": true, "reasoning_effort": "high"}`) also runs `ccfp iq` on each endpoint (quick by default). Every endpoint in a run gets the same tasks and is compared with its `baseline` endpoint; outputs `<name>.iq.json/.md/.html`, history in `iq-history.jsonl`, and a downgrade table in the summary.
 - `baseline` is either the name of another endpoint in the same file (it is probed first) or the path of a saved report. Prompt tokens are only compared between endpoints on the same protocol (`relay-b` above is compared on capability and knowledge only).
 - Run settings: `out_dir` (default `ccfp-runs`), `history` (default `<out_dir>/history.jsonl`), `html` (default `true`), `fail_under`, `fail_on_drift`.
 - Output in `out_dir`: `<name>.json` (raw report), `<name>.md` / `<name>.html` (verdict), `summary.md` / `summary.html` (all endpoints side by side, plus what changed), `history.jsonl`.
@@ -187,6 +222,8 @@ Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-und
 | `ccfp run --config <file>` | Probe every endpoint in a config file, compare, record history |
 | `ccfp watch --config <file> --every <interval>` | `run` on a timer (`30m`, `6h`, `1d`) |
 | `ccfp history [file]` | Show the history and what changed between runs |
+| `ccfp iq --base-url <url> --model <id>` | Downgrade check (options: `ccfp iq --help` and above) |
+| `ccfp iq --sheet` / `--grade <reply>` | Downgrade check for chat apps: write a sheet / grade the reply |
 
 ### Options
 

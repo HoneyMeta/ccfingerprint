@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.0 (2026-11-24)
+
+- `ccfp iq`: downgrade check. Reasoning tasks at three levels generated from a seed on every run (no memorising, no cached answers), graded exactly; reasoning tokens of the hard tasks for reasoning models; needle-in-a-haystack at a set size (start / middle / end) plus billed prompt tokens; optional `--long-output` cap check; output speed; `--rounds` for intermittent downgrades; `--baseline` against an official run with the same `--seed`; `--history` drift (score, reasoning tokens, context, output). Levels quick / standard / full (12 / 23 / 46 tasks).
+- Hidden-prompt detection: requests billed far more prompt tokens than their text can tokenize to carry a hidden prompt; when only some requests do, requests are split between channels, and the pass rates of both groups are compared.
+- `--reasoning-effort` (OpenAI protocol) and `--thinking-budget` (Anthropic) for `ccfp iq`.
+- `ccfp iq --sheet` / `--grade`: a paste-in task sheet for chat apps without an API (e.g. the ChatGPT web app) and grading of the reply.
+- `ccfp run` / `watch`: `"iq": true` or an options object per endpoint or at the top level; same tasks for every endpoint in a run, compared with the baseline endpoint; `iq-history.jsonl`; a downgrade table in the summary.
+- `parseResponse` now records reasoning tokens, reasoning text length and the finish reason.
+
 ## 2.5.1 (2026-11-24)
 
 - Fix [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2): `ccfp init --ai codex` wrote `agents/openai.yaml` with `policy.allow_implicit_invocation: false`, which makes Codex hide the skill from the model's skill list, so Codex said it had no `fingerprint` skill. The yaml now carries only the display name; the skill description says to run only when the user invokes it (`/fingerprint` or `$fingerprint`). Re-run `ccfp init --ai codex` to replace an old yaml.

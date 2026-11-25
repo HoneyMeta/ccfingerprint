@@ -7,6 +7,7 @@ import { probe } from '../src/probe.js';
 import { compare } from '../src/compare.js';
 import { run } from '../src/run.js';
 import { history } from '../src/history.js';
+import { iq } from '../src/iq.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -69,6 +70,40 @@ verdictOptions(program
   .option('--fail-on-drift', 'Exit with code 2 if the endpoint changed since the last run in --history / 有变化时退出码为 2', false), 'ccfp-verdict.md')
   .action(async (options) => {
     await probe(options);
+  });
+
+program
+  .command('iq')
+  .description('Downgrade check (降智检测): fresh reasoning tasks, reasoning tokens, long context, output cap / 检测模型是否被降智')
+  .option('--base-url <url>', 'Endpoint base URL, e.g. https://api.openai.com/v1')
+  .option('--model <id>', 'Model ID to request (with --grade: the model you picked in the chat app)')
+  .option('--api <protocol>', 'openai (/v1/chat/completions) or anthropic (/v1/messages)', 'openai')
+  .option('--api-key-env <name>', 'Environment variable holding the API key', 'CCFP_API_KEY')
+  .option('--level <set>', 'quick (12 tasks) | standard (23) | full (46); sheets default to quick')
+  .option('--seed <n>', 'Task seed; use the same seed on the official API for a comparable baseline / 题目种子')
+  .option('--rounds <n>', 'Repeat the task set n times to catch intermittent downgrades / 重复 n 轮', '1')
+  .option('--context <tokens>', 'Needle-in-a-haystack prompt size, e.g. 32k or 128k; 0 = off (default by level: 8k / 32k / 100k)')
+  .option('--long-output', 'Also check that a ~5k-token output is not cut short / 检查长输出是否被截断', false)
+  .option('--reasoning-effort <level>', 'Send reasoning_effort (openai protocol), e.g. high')
+  .option('--thinking-budget <tokens>', 'Enable extended thinking with this budget (anthropic protocol)')
+  .option('--concurrency <n>', 'Parallel requests', '4')
+  .option('--max-tokens <n>', 'max_tokens per request (anthropic default 8000; openai: not sent)')
+  .option('--timeout <seconds>', 'Per-request timeout', '300')
+  .option('--baseline <report>', 'ccfp iq report from the official API (ideally same --seed) / 官方接口的基准报告')
+  .option('--report <path>', 'Where to save the raw report / 原始报告保存位置', 'ccfp-iq.json')
+  .option('--from <report>', 'Re-score a saved raw report instead of calling the endpoint / 重新评分已有报告')
+  .option('--sheet [file]', 'Write a paste-in task sheet for chat apps without an API (e.g. the ChatGPT web app) / 生成网页版自测题单')
+  .option('--grade <reply>', 'Grade the chat app reply to a sheet (needs --seed) / 给网页版回复评分')
+  .option('--history <file>', 'Append to this JSONL file and flag changes since the last run / 追加到历史文件并检查变化')
+  .option('--fail-on-drift', 'Exit with code 2 if the result changed since the last run in --history', false)
+  .option('--fail-on-downgrade', 'Exit with code 2 if the verdict is "downgraded" / 判定为降智时退出码为 2', false)
+  .option('--fail-under <score>', 'Exit with code 2 if the score is below this / 得分低于该值时退出码为 2')
+  .option('--lang <language>', 'Language (zh, en)', 'zh')
+  .option('--output <path>', 'Markdown output file', 'ccfp-iq.md')
+  .option('--json', 'Print JSON instead of Markdown', false)
+  .option('--html <path>', 'Also save a shareable HTML report / 另存 HTML 报告')
+  .action(async (options) => {
+    await iq(options);
   });
 
 program

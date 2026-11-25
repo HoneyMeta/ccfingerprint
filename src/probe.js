@@ -43,18 +43,28 @@ export function parseResponse(protocol, body) {
   if (protocol === 'anthropic') {
     const u = body.usage || {};
     const input = [u.input_tokens, u.cache_creation_input_tokens, u.cache_read_input_tokens].filter(Number.isFinite);
+    const thinking = (body.content || []).filter((b) => b.type === 'thinking').map((b) => b.thinking || '').join('');
     return {
       text: (body.content || []).filter((b) => b.type === 'text').map((b) => b.text).join(''),
       model: body.model || null,
       id: body.id || null,
       prompt_tokens: input.length ? input.reduce((a, b) => a + b, 0) : null,
       completion_tokens: Number.isFinite(u.output_tokens) ? u.output_tokens : null,
-      reasoning_field: false
+      reasoning_field: false,
+      reasoning_tokens: null,
+      reasoning_chars: thinking.length || null,
+      finish_reason: body.stop_reason || null
     };
   }
   const msg = body.choices?.[0]?.message || {};
   const u = body.usage || {};
+  // reasoning models report hidden reasoning in usage (chat completions / responses-style / some relays)
+  const rt = [u.completion_tokens_details?.reasoning_tokens, u.output_tokens_details?.reasoning_tokens, u.reasoning_tokens].find(Number.isFinite);
+  const reasoningText = [msg.reasoning_content, msg.reasoning].find((x) => typeof x === 'string') || '';
   return {
+    reasoning_tokens: rt ?? null,
+    reasoning_chars: reasoningText.length || null,
+    finish_reason: body.choices?.[0]?.finish_reason || null,
     text: contentText(msg.content),
     model: body.model || null,
     id: body.id || null,
@@ -64,16 +74,17 @@ export function parseResponse(protocol, body) {
   };
 }
 
-function requestBody(protocol, { model, system, prompt, maxTokens, temperature }) {
+// `extra`: additional request fields (e.g. reasoning_effort, thinking) used by `ccfp iq`.
+function requestBody(protocol, { model, system, prompt, maxTokens, temperature, extra }) {
   if (protocol === 'anthropic') {
     const body = { model, max_tokens: maxTokens || 2048, system, messages: [{ role: 'user', content: prompt }] };
     if (temperature != null) body.temperature = temperature;
-    return body;
+    return extra ? { ...body, ...extra } : body;
   }
   const body = { model, messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }], stream: false };
   if (maxTokens) body.max_tokens = maxTokens;
   if (temperature != null) body.temperature = temperature;
-  return body;
+  return extra ? { ...body, ...extra } : body;
 }
 
 function headers(protocol, apiKey) {

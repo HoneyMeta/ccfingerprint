@@ -6,13 +6,14 @@ import { verifyReport, verdictJson, renderVerdict } from './verify.js';
 import { compareReports, renderCompare } from './compare.js';
 import { appendHistory, historyRecord } from './history.js';
 import { renderHtml } from './html.js';
+import { runIq, scoreIq, renderIq, iqJson, iqHistoryRecord, appendIqHistory, randomSeed, IQ_LEVELS } from './iq.js';
 
 // `ccfp run --config ccfp.config.json`: probe several endpoints in one go (optionally against an
 // official endpoint probed in the same run), write one report per endpoint plus a comparison,
 // append to a history file and flag endpoints that changed since the previous run.
 // `ccfp watch` is the same thing on a timer.
 
-const SHARED = ['lang', 'quick', 'runs', 'canary', 'concurrency', 'timeout', 'maxTokens', 'temperature', 'api', 'apiKeyEnv', 'model', 'baseUrl', 'baseline'];
+const SHARED = ['lang', 'quick', 'runs', 'canary', 'concurrency', 'timeout', 'maxTokens', 'temperature', 'api', 'apiKeyEnv', 'model', 'baseUrl', 'baseline', 'iq'];
 const SECRET_KEYS = /^(api[-_]?key|key|token|authorization|secret)$/i;
 
 const camel = (k) => k.replace(/[-_]([a-z])/g, (_, c) => c.toUpperCase());
@@ -50,6 +51,7 @@ export function loadConfig(raw) {
     if (names.has(ep.name)) return { error: `config: duplicate endpoint name "${ep.name}"` };
     names.add(ep.name);
     if (!ep.baseUrl || !ep.model) return { error: `config endpoints[${i}] (${ep.name}): "baseUrl" and "model" are required` };
+    if (ep.iq && typeof ep.iq === 'object' && ep.iq.level && !IQ_LEVELS.includes(ep.iq.level)) return { error: `config endpoints[${i}] (${ep.name}): iq.level must be one of ${IQ_LEVELS.join(', ')}` };
     endpoints.push(ep);
   }
   // an endpoint used as another one's baseline is probed first
@@ -85,6 +87,10 @@ export async function runOnce(raw, { configDir = '.', env = process.env, fetchIm
 
   const results = [];
   const reports = new Map();
+  const iqReports = new Map();
+  // one task seed per run, shared by every endpoint, so an endpoint and its baseline answer the same tasks
+  const iqSeed = Number.isFinite(Number(raw.iqSeed ?? raw.iq_seed)) ? Number(raw.iqSeed ?? raw.iq_seed) : randomSeed();
+  const iqHistoryFile = path.join(path.dirname(historyFile), 'iq-history.jsonl');
   for (const ep of loaded.endpoints) {
     const { error, params } = probeParams({ ...ep, lang: overrides.lang || ep.lang || settings.lang }, env);
     if (error) {
@@ -113,7 +119,36 @@ export async function runOnce(raw, { configDir = '.', env = process.env, fetchIm
       fs.writeFileSync(`${base}.html`, renderHtml(md, { title: `ccfp · ${ep.name} · ${v.confidence}/100`, badge: { level: v.level, confidence: v.confidence } }), 'utf-8');
     }
     log(`  ${v.confidence}/100 ${v.level}${drift.length ? ` · ⚠ ${drift.map((d) => d.kind).join(', ')}` : ''}`);
-    results.push({ name: ep.name, file: `${base}.json`, report, verdict: v, drift });
+    const entry = { name: ep.name, file: `${base}.json`, report, verdict: v, drift };
+    if (ep.iq) {
+      const o = typeof ep.iq === 'object' ? normalizeKeys(ep.iq) : {};
+      const iqReport = await runIq({
+        ...params,
+        timeoutMs: (Number(o.timeout) || Math.max(300, params.timeoutMs / 1000)) * 1000,
+        level: o.level || 'quick',
+        seed: iqSeed,
+        rounds: Math.max(1, Number(o.rounds) || 1),
+        context: o.context == null ? undefined : Number(o.context),
+        longOutput: !!o.longOutput,
+        reasoningEffort: o.reasoningEffort,
+        thinkingBudget: o.thinkingBudget,
+        maxTokens: o.maxTokens,
+        fetchImpl,
+        retries: ep.retries
+      });
+      iqReports.set(ep.name, iqReport);
+      const iv = scoreIq(iqReport, { baseline: ep.baseline ? iqReports.get(ep.baseline) : null });
+      fs.writeFileSync(`${base}.iq.json`, JSON.stringify(iqReport, null, 2), 'utf-8');
+      const { drift: iqDrift } = appendIqHistory(iqHistoryFile, iqHistoryRecord(iqReport, iv, { name: ep.name, reportPath: `${base}.iq.json` }));
+      iv.drift = iqDrift;
+      const imd = renderIq(iv, iqReport);
+      fs.writeFileSync(`${base}.iq.md`, imd, 'utf-8');
+      if (settings.html) fs.writeFileSync(`${base}.iq.html`, renderHtml(imd, { title: `ccfp iq · ${ep.name} · ${iv.score ?? '-'}/100`, badge: { level: iv.level, confidence: iv.score ?? 0 } }), 'utf-8');
+      log(`  iq ${iv.score ?? '-'}/100 ${iv.level}${iqDrift.length ? ` · ⚠ ${iqDrift.map((d) => d.kind).join(', ')}` : ''}`);
+      entry.iq = iv;
+      entry.drift = [...drift, ...iqDrift];
+    }
+    results.push(entry);
   }
 
   const ok = results.filter((r) => r.verdict);
@@ -123,6 +158,17 @@ export async function runOnce(raw, { configDir = '.', env = process.env, fetchIm
     // keep the per-endpoint verdicts (they include the baseline) instead of the baseline-free re-score
     cmp.rows.forEach((row, i) => { row.verdict = ok[i].verdict; });
     summary = renderCompare(cmp, dataset);
+    const withIq = ok.filter((r) => r.iq);
+    if (withIq.length) {
+      const pctOf = (x) => (x == null ? '-' : `${Math.round(x * 100)}%`);
+      summary += '\n## 降智检测 / Downgrade check\n';
+      summary += '| 端点 / endpoint | 结论 / verdict | 得分 / score | 难题 / hard | 推理 token / reasoning | 长上下文 / context |\n|---|---|---|---|---|---|\n';
+      for (const r of withIq) {
+        const c = r.iq.context;
+        summary += `| ${r.name} | ${r.iq.label} | ${r.iq.score ?? '-'} | ${pctOf(r.iq.l3)} | ${r.iq.reasoning.median ?? '-'} | ${c ? (c.error ? 'error' : `${Object.values(c.found).filter(Boolean).length}/3`) : '-'} |\n`;
+      }
+      for (const r of withIq) for (const f of r.iq.flags) summary += `- ${r.name}: ${f.strong ? '**[强 / strong]** ' : ''}${f.message}\n`;
+    }
     const changed = ok.filter((r) => r.drift.length);
     if (changed.length) {
       summary += '\n## ⚠ 与上一次检测相比的变化 / Changed since the previous run\n';
@@ -166,7 +212,7 @@ function resultJson(r) {
     at: r.at,
     out_dir: r.outDir,
     history: r.historyFile,
-    endpoints: r.results.map((x) => (x.error ? { name: x.name, error: x.error } : { name: x.name, file: x.file, ...verdictJson(x.verdict, r.dataset) }))
+    endpoints: r.results.map((x) => (x.error ? { name: x.name, error: x.error } : { name: x.name, file: x.file, ...verdictJson(x.verdict, r.dataset), ...(x.iq ? { iq: iqJson(x.iq) } : {}) }))
   };
 }
 

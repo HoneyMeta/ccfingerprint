@@ -12,6 +12,13 @@ CCFingerprint 是一个 AI 模型身份指纹识别工具。它让模型作答�
 
 ---
 
+## v2.6 更新了什么？
+
+- **`ccfp iq`：专门检测降智**。`probe` 回答的是“是不是这个模型”，`iq` 回答的是“它现在有没有被降智”：GPT 等模型被换成小模型、推理强度被调低或关掉、长上下文被截断、输出被限长、请求被分流到注入隐藏提示词的渠道，都能测出来。详见下方 [降智检测](#降智检测ccfp-iq)。
+- **网页版也能测**：`ccfp iq --sheet` 生成一份题单，粘贴给 ChatGPT 网页版等没有 API 的应用，再用 `--grade` 给回复打分。
+- `ccfp run` / `ccfp watch` 的配置里加 `"iq": true`，定时监控每个端点有没有降智，结果单独记在 `iq-history.jsonl`，与上次相比变差时报警。
+- 修复 [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2)（v2.5.1）：`ccfp init --ai codex` 生成的 `agents/openai.yaml` 会让 Codex 看不到 skill。
+
 ## v2.5 更新了什么？
 
 - **一次检测多个端点：`ccfp run --config ccfp.config.json`**。把要测的中转（以及官方 API）写进一个 JSON 文件，ccfp 逐个探测，用同一次运行里测出的官方端点作基准逐个比较，每个端点一份报告，外加一张并排汇总表。key 仍然只放在环境变量里：配置文件里出现 key 会直接拒绝运行。
@@ -122,6 +129,33 @@ ccfp compare relay-a.json relay-b.json relay-c.json --baseline official.json
 
 每题一个请求：完整版约 31 个，`--quick` 约 17 个，另加 3 个极短的 canary 请求（`--canary 0` 关闭）。`--runs N` 会把请求数乘以 N。
 
+## 降智检测（`ccfp iq`）
+
+```bash
+export CCFP_API_KEY=sk-...
+ccfp iq --base-url https://relay.example.com/v1 --model gpt-5.5
+ccfp iq --base-url https://api.openai.com/v1 --model gpt-5.5 --seed 123456 --report official-iq.json   # 官方基准
+ccfp iq --base-url https://relay.example.com/v1 --model gpt-5.5 --seed 123456 --baseline official-iq.json
+```
+
+“降智”通常是下面几种情况之一，`ccfp iq` 每种都有对应的可测信号：
+
+| 降智方式 | 怎么测 |
+|----------|--------|
+| 换成更小 / 更便宜的模型 | 三档难度的推理题（大数乘法、长串数字母、列表操作、模运算、中国剩余定理、代码推演、骑士与无赖、容斥计数、排序、进制转换、日期计算），**每次按随机种子现场出题**，答案由脚本精确判分。不能背题，也没法用缓存答案应付。前沿模型难题正确率明显偏低、连简单题都错，都会报出来 |
+| 推理强度被调低 / 关掉（GPT 推理模型最常见） | 读接口返回的 `usage.completion_tokens_details.reasoning_tokens`：自称推理模型却几乎全是 0，或比官方基准少一大截 |
+| 请求被分流到其他渠道 | 文本再长也不会超过约 1.2 token/字符；某些请求的输入 token 比文本多出几千，就是被注入了隐藏提示词。只有一部分请求这样 = 请求在不同渠道间分流（还会比较两组请求的正确率） |
+| 长上下文被截断 | 在指定长度（默认 32k token）的长文开头、中间、末尾各藏一个代码；开头丢失或计费 token 远少于实际长度 = 被截断；计费 token 远多于实际长度 = 计费虚高 |
+| 输出被限长 | `--long-output`：要求输出 1..1500，因长度上限中途截断会报出来（模型自己省略只作备注） |
+| 间歇性降智 | `--rounds 3` 多轮比较；`--history` 或 `ccfp watch` 长期跟踪，得分、推理 token、长上下文和上次相比变差时报警 |
+
+- **最可靠的用法是和官方 API 对比**：用同一个 `--seed` 在官方接口和中转上各跑一次，再用 `--baseline` 比较得分、难题正确率、推理 token、长上下文和输出速度。没有基准时，只对前沿模型名（GPT-5 及以后、o 系列、Claude、Gemini 2.5 Pro/3、Grok 4、DeepSeek、Qwen 3 等）给绝对判断；mini / nano / flash / haiku 这类轻量模型只做记录。
+- **题量**：`--level quick` 12 题、`standard` 23 题（默认）、`full` 46 题，另加 1 个长上下文请求（`--context 0` 关闭，`--context 128k` 改长度）。
+- **推理参数**：`--reasoning-effort high`（OpenAI 协议，发送 `reasoning_effort`），`--thinking-budget 8000`（Anthropic 协议，开启 extended thinking）。不加就用接口默认值。
+- **网页版自测**（ChatGPT 网页版等）：`ccfp iq --sheet` 生成题单并打印 seed；整段粘贴给对方，把完整回复存成文件，再运行 `ccfp iq --grade reply.txt --seed <seed> --model <你选的模型>`。网页版拿不到 token 数据，只看正确率；请让它不要用代码工具。
+- 输出：`ccfp-iq.json`（原始报告，`--from` 可重新评分）、`ccfp-iq.md`，可加 `--html`、`--json`；`--fail-under 70`、`--fail-on-downgrade` 用于 CI。
+- 单次结果有抽样误差，一两道题的差别说明不了什么；结论里的“强”信号才是硬证据。
+
 ## 批量检测与长期监控（`ccfp run` / `ccfp watch`）
 
 把端点写进一个 JSON 文件，例如 `ccfp.config.json`：
@@ -148,6 +182,7 @@ ccfp history ccfp-runs/history.jsonl --html history.html
 ```
 
 - 顶层的键对所有端点生效，单个端点可以覆盖。键名就是 `ccfp probe` 的选项（下划线或驼峰都行）：`base_url`、`model`、`api`、`api_key_env`、`quick`、`runs`、`canary`、`concurrency`、`timeout`、`max_tokens`、`temperature`、`lang`、`baseline`。
+- 加 `"iq": true`（或 `{"level": "standard", "context": 32000, "long_output": true, "reasoning_effort": "high"}`）会在每个端点上顺带跑 `ccfp iq`（默认 quick 档），同一轮所有端点用同一套题，并与 `baseline` 端点的结果对比；输出 `<name>.iq.json/.md/.html`，历史记在 `iq-history.jsonl`，汇总里多一张降智检测表。
 - `baseline` 可以写同一文件里另一个端点的名字（它会先测），也可以写一个已保存报告的路径。输入 token 只在同协议的端点之间比较（上例的 `relay-b` 只比较能力和知识）。
 - 运行设置：`out_dir`（默认 `ccfp-runs`）、`history`（默认 `<out_dir>/history.jsonl`）、`html`（默认 `true`）、`fail_under`、`fail_on_drift`。
 - `out_dir` 里的输出：`<name>.json`（原始报告）、`<name>.md` / `<name>.html`（鉴定结论）、`summary.md` / `summary.html`（所有端点并排 + 变化）、`history.jsonl`。
@@ -189,6 +224,8 @@ ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fa
 | `ccfp run --config <file>` | 按配置文件检测所有端点、并排对比、记录历史 |
 | `ccfp watch --config <file> --every <间隔>` | 定时重复 `run`（`30m`、`6h`、`1d`） |
 | `ccfp history [file]` | 查看历史和每次之间的变化 |
+| `ccfp iq --base-url <url> --model <id>` | 降智检测（选项见 `ccfp iq --help` 和上文） |
+| `ccfp iq --sheet` / `--grade <reply>` | 网页版降智自测：生成题单 / 给回复评分 |
 
 ### 选项
 

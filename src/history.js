@@ -94,7 +94,7 @@ export function readHistory(file) {
 }
 
 export function lastRecordFor(records, key) {
-  for (let i = records.length - 1; i >= 0; i--) if (recordKey(records[i]) === key) return records[i];
+  for (let i = records.length - 1; i >= 0; i--) if (records[i].kind !== 'iq' && recordKey(records[i]) === key) return records[i];
   return null;
 }
 
@@ -110,7 +110,7 @@ export function appendHistory(file, record) {
 // Group by endpoint, oldest first, with the drift of each run against the one before it.
 export function analyzeHistory(records) {
   const groups = new Map();
-  for (const r of records) {
+  for (const r of records.filter((x) => x.kind !== 'iq')) { // `ccfp iq` records have their own shape
     const k = recordKey(r);
     groups.set(k, [...(groups.get(k) || []), r]);
   }
