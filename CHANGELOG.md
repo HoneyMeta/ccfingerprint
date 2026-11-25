@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.1 (2026-11-24)
+
+- Fix [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2): `ccfp init --ai codex` wrote `agents/openai.yaml` with `policy.allow_implicit_invocation: false`, which makes Codex hide the skill from the model's skill list, so Codex said it had no `fingerprint` skill. The yaml now carries only the display name; the skill description says to run only when the user invokes it (`/fingerprint` or `$fingerprint`). Re-run `ccfp init --ai codex` to replace an old yaml.
+- README: quote `$fingerprint` with single quotes in `codex exec`.
+
 ## 2.5.0 (2026-11-22)
 
 - `ccfp run --config <file>`: probe several endpoints from one JSON config, compare each relay with an official endpoint probed in the same run (`"baseline": "<endpoint name>"`), write one report per endpoint plus `summary.md` / `summary.html`. API keys stay in environment variables; a config containing a key is refused. An endpoint with a missing key is skipped and listed; the rest still run.

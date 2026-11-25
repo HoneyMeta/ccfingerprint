@@ -237,7 +237,7 @@ ccfp probe --base-url "$RELAY_URL" --model claude-sonnet-5-5 --quick --json --fa
 | `antigravity` | Google Antigravity | `.agents/skills/fingerprint/SKILL.md` | `/fingerprint` |
 | `gemini` | Gemini CLI（企业版） | `.gemini/commands/fingerprint.toml` | `/fingerprint` |
 
-Skill 文件设置了 `disable-model-invocation: true`，只有你主动调用时才会运行。
+Skill 文件设置了 `disable-model-invocation: true`，只有你主动调用时才会运行。Codex 不认这个字段，所以 description 里写明了“仅在用户主动调用时运行”；`agents/openai.yaml` 只放显示名称，不再带 `policy.allow_implicit_invocation: false`（它会让 Codex 把 skill 从列表里藏起来，见 [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2)）。在 shell 里用 `codex exec` 调用时请用单引号，例如 `codex exec '$fingerprint'`，否则 `$fingerprint` 会被 shell 当成变量展开成空字符串。
 
 ## 工作原理
 

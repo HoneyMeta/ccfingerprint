@@ -235,7 +235,7 @@ Exit codes: `0` ok; `1` bad arguments or files; `2` confidence below `--fail-und
 | `antigravity` | Google Antigravity | `.agents/skills/fingerprint/SKILL.md` | `/fingerprint` |
 | `gemini` | Gemini CLI (enterprise) | `.gemini/commands/fingerprint.toml` | `/fingerprint` |
 
-Skill files set `disable-model-invocation: true`, so the probe only runs when you ask for it.
+Skill files set `disable-model-invocation: true`, so the probe only runs when you ask for it. Codex ignores that key, so the description says "run only when the user invokes it"; `agents/openai.yaml` carries only the display name and no longer sets `policy.allow_implicit_invocation: false`, which made Codex hide the skill (see [#2](https://github.com/HoneyMeta/ccfingerprint/issues/2)). With `codex exec` in a shell, use single quotes (`codex exec '$fingerprint'`), otherwise the shell expands `$fingerprint` to an empty string.
 
 ## How it works
 
